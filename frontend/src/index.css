@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-surface: #f1fbff;
+  --color-surface-dim: #d1dce0;
+  --color-surface-bright: #f1fbff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eaf5fa;
+  --color-surface-container: #e4f0f4;
+  --color-surface-container-high: #dfeaef;
+  --color-surface-container-highest: #d9e4e9;
+  --color-on-surface: #131d21;
+  --color-on-surface-variant: #564334;
+  --color-inverse-surface: #283236;
+  --color-inverse-on-surface: #e7f3f7;
+  --color-outline: #897362;
+  --color-outline-variant: #ddc1ae;
+  --color-surface-tint: #904d00;
+  --color-primary: #904d00;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #ff8c00;
+  --color-on-primary-container: #623200;
+  --color-inverse-primary: #ffb77d;
+  --color-secondary: #586062;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #dae1e3;
+  --color-on-secondary-container: #5d6466;
+  --color-tertiary: #0060a9;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #67adff;
+  --color-on-tertiary-container: #004073;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
