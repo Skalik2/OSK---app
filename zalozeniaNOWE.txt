@@ -1,0 +1,40 @@
+Chcę zrobić aplikację MVP dla osk opartą na architekturze Modułowego Monolitu (wydzielona autoryzacja, reszta połączona dla prostoty w Core API).
+Nie chcę aby było to mocno skomplikowane i chcę aby kilka osób na raz mogło robić różne moduły (podział na katalogi/routery w kodzie).
+Dodatkowo działaj na bazie danych postgresql.
+
+monorepo
+
+Architektura Backendowa:
+- Auth Service / Moduł Auth: Odpowiada za rejestrację, logowanie, generowanie tokenów i przechowywanie ról (Kursant, Instruktor, Admin).
+- Core API: Główna aplikacja przyjmująca zapytania z frontendu, łącząca logikę biznesową pozostałych domen. Dzięki wspólnej bazie danych, kiedy frontend prosi o widok kalendarza, Core API pobiera lekcje i od razu dołącza do nich imiona i nazwiska za pomocą zapytań SQL (JOIN), i zwraca gotowy JSON do Reacta.
+
+Podział Domenowy (Moduły w Core API):
+- Calendar: Odpowiada za dostępność instruktorów, planowanie jazd i odwoływanie lekcji.
+- Student: Odpowiada za profil kursanta, śledzenie jego postępów (wyjeżdżone godziny z wymaganych 30h), przypisaną kategorię (AM, B, C) oraz status płatności za kurs.
+- Instructor: Odpowiada za zarządzanie profilem instruktora, jego danymi personalnymi, numerem legitymacji oraz kategoriami prawa jazdy, na które posiada uprawnienia do szkolenia.
+- Admin: Odpowiada za profil administratora (np. managera, właściciela szkoły).
+
+Baza Danych - PostgreSQL (1 instancja)
+docker-compose up --build
+http://localhost:5050
+Email: admin@osk.pl
+Password: admin
+Servers -> Register -> Server
+Host name/address: osk_postgres
+Port: 5432
+Maintenance database: osk_default
+Username: root
+Password: rootpassword
+
+Backend - FastAPI (Szybko można napisać - też do zmiany jak cos. Posiada wyraźny podział na moduły w strukturze katalogów).
+Front - react 
+
+JWT:
+Użytkownik loguje się przez Auth
+Dostaje token JWT z zakodowanym swoim ID oraz rolą
+Frontend wysyła ten token w nagłówku Authorization: Bearer <token> przy każdym zapytaniu
+Core API weryfikuje poprawność tokenu przed przetworzeniem żądania.
+
+Podejście do danych:
+Izolacja logiczna: Zamiast wielu osobnych baz danych, stosujemy podział na dedykowane schematy (schema) w jednym Postgresie (auth, student, calendar, instructor, admin).
+Klucze obce (Foreign Keys) SĄ DOZWOLONE: Aby zapewnić spójność danych i ułatwić ich pobieranie, tabele mogą się do siebie odwoływać (np. tabela lekcji w schemacie calendar posiada klucze obce wskazujące bezpośrednio na profile w schematach student i instructor).

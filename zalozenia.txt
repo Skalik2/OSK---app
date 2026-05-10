@@ -1,0 +1,42 @@
+Chcę zrobić aplikację MVP dla osk opartą na mikroserwisach (logowanie, kalendarz, itd...) Rozplanuj mi jak to zrobić i jak połączyć czym w jakich technologiach i jak zabezpieczyć. Nie chcę aby było to mocno skomplikowane i chcę aby kilka osób na raz mogło robić różne mikroserwisy. Dodatkowo działaj na bazie danych postgresql 
+
+monorepo
+
+API Gateway: Jedyny punkt styku dla frontendu. Przyjmuje zapytania i przekierowuje je do odpowiednich mikroserwisów (np. ruch na /api/auth idzie do serwisu logowania).Serwis kalendarza wie jedynie, że lekcja odbywa się pomiędzy konkretnym instructor_id oraz student_id. Kiedy frontend poprosi o widok kalendarza, będzie potrzebował imion i nazwisk - API Gateway musi odpytać Calendar Service o lekcje, a następnie dopytać serwisy zarządzające profilami o imiona tych osób i zwrócił gotowy JSON do Reacta.
+
+Auth Service: Odpowiada za rejestrację, logowanie, generowanie tokenów i przechowywanie ról (Kursant, Instruktor, Admin).
+
+Calendar Service: Odpowiada za dostępność instruktorów, planowanie jazd i odwoływanie lekcji.
+
+Student Service: Odpowiada za profil kursanta, śledzenie jego postępów (wyjeżdżone godziny z wymaganych 30h), przypisaną kategorię (AM, B, C) oraz status płatności za kurs.
+
+Instructor Service: Odpowiada za zarządzanie profilem instruktora, jego danymi personalnymi, numerem legitymacji oraz kategoriami prawa jazdy, na które posiada uprawnienia do szkolenia.
+
+Admin Service: Odpowiada za profil administratora (np. managera, właściciela szkoły).
+
+Baza Danych - PostgreSQL
+docker-compose up --build
+http://localhost:5050
+Email: admin@osk.pl
+Password: admin
+Servers -> Register -> Server
+Host name/address: osk_postgres
+Port: 5432
+Maintenance database: osk_default
+Username: root
+Password: rootpassword
+
+Backend - FastAPI(Szybko można napisać - też do zmiany jak cos)
+Front - react 
+
+JWT:
+Użytkownik loguje się w Auth Service
+Dostaje token JWT z zakodowanym swoim ID oraz rolą
+Frontend wysyła ten token w nagłówku Authorization: Bearer <token> przy każdym zapytaniu
+API Gateway (lub każdy z serwisów) weryfikuje poprawność tokenu przed przetworzeniem żądania
+Przekazywanie tokenu - Jeśli jeden serwis odpytuje drugi w imieniu użytkownika, powinien przekazać dalej jego token JWT.
+
+Izolacja danych: Każdy mikroserwis ma własną, niezależną bazę danych lub (co łatwiejsze w MVP na jednym Postgresie) własny dedykowany schemat (schema). Serwis Auth nie ma bezpośredniego dostępu do tabel serwisu Calendar.
+
+Brak kluczy obcych (Foreign Keys) między serwisami: Jeśli Calendar potrzebuje danych instruktora, przechowuje tylko jego user_id (jako zwykły UUID/INT), a nie tworzy twardej relacji w bazie.
+
