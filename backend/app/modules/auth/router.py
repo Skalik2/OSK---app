@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.modules.auth import models, schemas, utils
@@ -52,3 +53,42 @@ def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
     access_token = utils.create_access_token(data={"sub": user.email})
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    # 1. Decode Token
+    email = utils.decode_access_token(token)
+    if email is None:
+        raise credentials_exception
+
+    # 2. Look up user in Postgres
+    user = db.query(models.Users).filter(models.Users.email == email).first()
+    if user is None:
+        raise credentials_exception
+
+    return user  # This returns the actual SQLAlchemy model object
+
+
+@router.get("/me", response_model=schemas.UserOut)
+def get_me(current_user: models.Users = Depends(get_current_user)):
+    # FastAPI handles the token verification automatically before this code runs.
+    # If the token is invalid, the user gets a 401 before they even reach this line.
+    return current_user
+
+@router.get("/verify")
+def verify_token(current_user: models.Users = Depends(get_current_user)):
+    # This endpoint is only accessible with a valid token
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role
+    }
