@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 ---------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS auth;
 
-CREATE TABLE auth.users (
+CREATE TABLE auth.au_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -19,17 +19,17 @@ CREATE TABLE auth.users (
 ---------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS student;
 
-CREATE TABLE student.profiles (
+CREATE TABLE student.st_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE, -- Klucz obcy do Auth
+    user_id UUID NOT NULL UNIQUE REFERENCES auth.au_users(id) ON DELETE CASCADE, -- Klucz obcy do Auth
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20)
 );
 
-CREATE TABLE student.courses (
+CREATE TABLE student.st_courses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    student_profile_id UUID NOT NULL REFERENCES student.profiles(id) ON DELETE CASCADE,
+    student_profile_id UUID NOT NULL REFERENCES student.st_profiles(id) ON DELETE CASCADE,
     category VARCHAR(10) NOT NULL, -- 'AM', 'B', 'C'
     required_hours INT DEFAULT 30,
     completed_hours INT DEFAULT 0,
@@ -42,9 +42,9 @@ CREATE TABLE student.courses (
 ---------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS instructor;
 
-CREATE TABLE instructor.profiles (
+CREATE TABLE instructor.in_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE, -- Klucz obcy do Auth
+    user_id UUID NOT NULL UNIQUE REFERENCES auth.au_users(id) ON DELETE CASCADE, -- Klucz obcy do Auth
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
@@ -54,9 +54,9 @@ CREATE TABLE instructor.profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE instructor.specialties (
+CREATE TABLE instructor.in_specialties (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    instructor_profile_id UUID REFERENCES instructor.profiles(id) ON DELETE CASCADE,
+    instructor_profile_id UUID REFERENCES instructor.in_profiles(id) ON DELETE CASCADE,
     category VARCHAR(10) NOT NULL
 );
 
@@ -65,10 +65,10 @@ CREATE TABLE instructor.specialties (
 ---------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS calendar;
 
-CREATE TABLE calendar.lessons (
+CREATE TABLE calendar.ca_lessons (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    instructor_id UUID NOT NULL REFERENCES instructor.profiles(id), -- Relacja do profilu instruktora
-    student_id UUID NOT NULL REFERENCES student.profiles(id),       -- Relacja do profilu kursanta
+    instructor_id UUID NOT NULL REFERENCES instructor.in_profiles(id), -- Relacja do profilu instruktora
+    student_id UUID NOT NULL REFERENCES student.st_profiles(id),       -- Relacja do profilu kursanta
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE NOT NULL,
     status VARCHAR(50) DEFAULT 'SCHEDULED', 
@@ -80,9 +80,9 @@ CREATE TABLE calendar.lessons (
 ---------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS admin;
 
-CREATE TABLE admin.profiles (
+CREATE TABLE admin.ad_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE, -- Klucz obcy do Auth
+    user_id UUID NOT NULL UNIQUE REFERENCES auth.au_users(id) ON DELETE CASCADE, -- Klucz obcy do Auth
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     position VARCHAR(100), 

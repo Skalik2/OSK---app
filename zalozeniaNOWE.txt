@@ -42,4 +42,4 @@ Klucze obce (Foreign Keys) SĄ DOZWOLONE: Aby zapewnić spójność danych i uł
 
 
 Generowanie schem
-sqlacodegen postgresql://root:rootpassword@localhost:5432/osk_default --schema auth > models_generated.py
+sqlacodegen postgresql://root:rootpassword@localhost:5432/osk_default --schema auth,admin,calendar,instructor,student > app/models.py

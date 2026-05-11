@@ -5,6 +5,7 @@ from uuid import UUID
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    role: str
 
 class UserOut(BaseModel):
     # Changed from int to UUID to match your SQLAlchemy Mapped[uuid.UUID]
