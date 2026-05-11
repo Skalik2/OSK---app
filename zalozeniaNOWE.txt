@@ -15,7 +15,7 @@ Podział Domenowy (Moduły w Core API):
 - Admin: Odpowiada za profil administratora (np. managera, właściciela szkoły).
 
 Baza Danych - PostgreSQL (1 instancja)
-docker-compose up --build
+docker-compose up --build     (możliwe że też    docker compose up --build    linux :P)
 http://localhost:5050
 Email: admin@osk.pl
 Password: admin
@@ -38,3 +38,8 @@ Core API weryfikuje poprawność tokenu przed przetworzeniem żądania.
 Podejście do danych:
 Izolacja logiczna: Zamiast wielu osobnych baz danych, stosujemy podział na dedykowane schematy (schema) w jednym Postgresie (auth, student, calendar, instructor, admin).
 Klucze obce (Foreign Keys) SĄ DOZWOLONE: Aby zapewnić spójność danych i ułatwić ich pobieranie, tabele mogą się do siebie odwoływać (np. tabela lekcji w schemacie calendar posiada klucze obce wskazujące bezpośrednio na profile w schematach student i instructor).
+
+
+
+Generowanie schem
+sqlacodegen postgresql://root:rootpassword@localhost:5432/osk_default --schema auth > models_generated.py
