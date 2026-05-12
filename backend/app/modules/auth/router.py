@@ -10,10 +10,9 @@ router = APIRouter(
     tags=["Auth"]
 )
 
-
 @router.post("/register", response_model=schemas.UserOut)
 def register(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
-    # 1. Check if user exists using the correct model name 'Users'
+
     user_exists = db.query(models.AuUsers).filter(models.AuUsers.email == user_credentials.email).first()
     if user_exists:
         raise HTTPException(
@@ -27,10 +26,7 @@ def register(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)
             detail="Can only register students and instructors"
         )
 
-    # 2. Hash the password using your updated utils (Argon2)
     hashed_pwd = utils.hash_password(user_credentials.password)
-
-
     new_user = models.AuUsers(
         email=user_credentials.email,
         password_hash=hashed_pwd,
@@ -45,17 +41,14 @@ def register(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)
 
 @router.post("/login", response_model=schemas.Token)
 def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
-    # 1. Fetch user from the 'Users' model
     user = db.query(models.AuUsers).filter(models.AuUsers.email == user_credentials.email).filter(models.AuUsers.role == user_credentials.role).first()
 
-    # 2. Validate user and password_hash
     if not user or not utils.verify_password(user_credentials.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
 
-    # 3. Create JWT (using email as the subject)
     access_token = utils.create_access_token(data={"sub": user.email})
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -81,18 +74,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
 
-    return user  # This returns the actual SQLAlchemy model object
-
-
-@router.get("/me", response_model=schemas.UserOut)
-def get_me(current_user: models.AuUsers = Depends(get_current_user)):
-    # FastAPI handles the token verification automatically before this code runs.
-    # If the token is invalid, the user gets a 401 before they even reach this line.
-    return current_user
+    return user
 
 @router.get("/verify")
 def verify_token(current_user: models.AuUsers = Depends(get_current_user)):
-    # This endpoint is only accessible with a valid token
     return {
         "id": current_user.id,
         "email": current_user.email,

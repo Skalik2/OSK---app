@@ -33,7 +33,6 @@ async def register_user_phase_one(user_in: auth_schema.UserCreate):
             if response.status_code != 200:
                 raise HTTPException(status_code=500, detail="Auth service error")
 
-            # Return the auth data (including the newly created token/user_id)
             return response.json()
 
         except httpx.RequestError:
@@ -45,7 +44,6 @@ async def register_student_profile(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    # 1. Get user identity from Auth service
     user_info = await tools.get_user(token)
     user_id = user_info['id']
 
@@ -56,12 +54,10 @@ async def register_student_profile(
     if not existing_user:
         raise HTTPException(status_code=400, detail="Role mismatch")
 
-    # 2. Check if a profile already exists for this user
     existing_profile = db.query(models.StProfiles).filter(models.StProfiles.user_id == user_id).first()
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user")
 
-    # 3. Create the profile
     new_profile = models.StProfiles(
         user_id=user_id,
         first_name=profile_data.first_name,
@@ -81,10 +77,6 @@ async def check_registration_status(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """
-    Checks if the user has an Auth account but is missing a Student Profile.
-    Returns True if they are 'in-between' registration phases.
-    """
     user_info = await tools.get_user(token)
     user_id = user_info['id']
 

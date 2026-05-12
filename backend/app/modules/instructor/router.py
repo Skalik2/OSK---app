@@ -22,11 +22,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 @router.post("/register_user")
 async def register_instructor_auth(user_in: auth_schema.UserCreate):
-    """Phase 1: Create Auth User with 'instructor' role"""
     registration_data = {
         "email": user_in.email,
         "password": user_in.password,
-        "role": "instructor" # Hardcoded for safety
+        "role": "instructor"
     }
 
     async with httpx.AsyncClient() as client:
@@ -50,8 +49,6 @@ async def register_instructor_profile(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Phase 2: Create Instructor Profile in the instructor schema"""
-    # 1. Get identity
     user_info = await tools.get_user(token)
     user_id = user_info['id']
 
@@ -62,12 +59,10 @@ async def register_instructor_profile(
     if not existing_user:
         raise HTTPException(status_code=400, detail="Role mismatch")
 
-    # 2. Check for existing instructor profile
     existing_profile = db.query(models.InProfiles).filter(models.InProfiles.user_id == user_id).first()
     if existing_profile:
         raise HTTPException(status_code=400, detail="Instructor profile already exists")
 
-    # 3. Create profile using the InProfiles model
     new_profile = models.InProfiles(
         user_id=user_id,
         first_name=profile_data.first_name,
@@ -89,7 +84,6 @@ async def check_instructor_status(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Check if auth exists but instructor profile is missing"""
     user_info = await tools.get_user(token)
     user_id = user_info['id']
 
@@ -106,9 +100,6 @@ async def get_instructor_profile_by_id(
         instructor_id: UUID,
         db: Session = Depends(get_db)
 ):
-    """Get instructor profile details by their specific profile UUID"""
-
-    # Query the instructor profile and join with the user table for the email
     profile = (
         db.query(models.InProfiles)
         .options(joinedload(models.InProfiles.user))
@@ -122,7 +113,6 @@ async def get_instructor_profile_by_id(
             detail=f"Instructor with id {instructor_id} not found"
         )
 
-    # Returning the flattened data to match the schema
     return {
         "id": profile.id,
         "user_id": profile.user_id,
@@ -146,19 +136,15 @@ async def verify_management_permission(token: str, target_instructor_profile_id:
     return False
 
 
-# --- GET ALL SPECIALTIES PER INSTRUCTOR ---
 @router.get("/all/{instructor_profile_id}", response_model=List[schemas.SpecialtyResponse])
 async def get_instructor_specialties(
         instructor_profile_id: UUID,
         db: Session = Depends(get_db)
 ):
-    """Fetch all specialties for a specific instructor profile"""
     return db.query(models.InSpecialties).filter(
         models.InSpecialties.instructor_profile_id == instructor_profile_id
     ).all()
 
-
-# --- ADD SPECIALTY ---
 @router.post("/add/{instructor_profile_id}", response_model=schemas.SpecialtyResponse)
 async def add_specialty(
         instructor_profile_id: UUID,
@@ -166,12 +152,8 @@ async def add_specialty(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    # 1. Permission Check
     await verify_management_permission(token, instructor_profile_id, db)
 
-
-
-    # 2. Uniqueness Check (Per Instructor)
     existing = db.query(models.InSpecialties).filter(
         models.InSpecialties.instructor_profile_id == instructor_profile_id,
         models.InSpecialties.category == specialty_in.category
@@ -180,9 +162,6 @@ async def add_specialty(
     if existing:
         raise HTTPException(status_code=400, detail="This user already has this speciality assigned")
 
-
-
-    # 3. Create
     new_specialty = models.InSpecialties(
         category=specialty_in.category,
         instructor_profile_id=instructor_profile_id
@@ -193,7 +172,6 @@ async def add_specialty(
     return new_specialty
 
 
-# --- MODIFY SPECIALTY ---
 @router.put("/edit/{specialty_id}", response_model=schemas.SpecialtyResponse)
 async def update_specialty(
         specialty_id: UUID,
@@ -205,10 +183,8 @@ async def update_specialty(
     if not db_specialty:
         raise HTTPException(status_code=404, detail="Specialty not found")
 
-    # Permission Check (against the owner of the existing specialty)
     await verify_management_permission(token, db_specialty.instructor_profile_id, db)
 
-    # Uniqueness Check (ensure the new name isn't already taken by another of their specialties)
     duplicate = db.query(models.InSpecialties).filter(
         models.InSpecialties.instructor_profile_id == db_specialty.instructor_profile_id,
         models.InSpecialties.category == specialty_update.category,
@@ -223,7 +199,6 @@ async def update_specialty(
     return db_specialty
 
 
-# --- REMOVE SPECIALTY ---
 @router.delete("/remove/{specialty_id}")
 async def delete_specialty(
         specialty_id: UUID,
@@ -234,7 +209,6 @@ async def delete_specialty(
     if not db_specialty:
         raise HTTPException(status_code=404, detail="Specialty not found")
 
-    # Permission Check
     await verify_management_permission(token, db_specialty.instructor_profile_id, db)
 
     db.delete(db_specialty)

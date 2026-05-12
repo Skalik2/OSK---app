@@ -20,7 +20,6 @@ class LessonResponse(BaseModel):
     status: str
     created_at: Optional[datetime]
 
-    # Include both, so any view (Admin/Student/Instructor) has the full context
     instructor: Optional[ProfileMinInfo] = None
     student: Optional[ProfileMinInfo] = None
 
@@ -33,7 +32,7 @@ class LessonCreate(BaseModel):
     start_time: datetime
     end_time: datetime
     status: Optional[str] = "SCHEDULED"
-    
+
 class LessonUpdate(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
