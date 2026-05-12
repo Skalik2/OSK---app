@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from uuid import UUID
-
+from sqlalchemy import or_, and_
 from app.database import get_db
 from app import models, tools
 from app.modules.calendar import schemas
@@ -16,7 +16,7 @@ router = APIRouter(
 # --------------------------------------- branie danych ----------------------------------------------------------------
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-# --- UNIFIED GET FOR STUDENTS ---
+
 @router.get("/student/{student_profile_id}/lessons", response_model=list[schemas.LessonResponse])
 async def get_student_lessons(
     student_profile_id: UUID,
@@ -24,10 +24,11 @@ async def get_student_lessons(
     db: Session = Depends(get_db)
 ):
     user_info = await tools.get_user(token)
-    # Authorization logic (Admin or self)
-    if user_info['role'] != 'admin':
-        # ... ownership check as implemented before ...
-        pass
+    if not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view these lessons."
+        )
 
     return (
         db.query(models.CaLessons)
@@ -39,7 +40,6 @@ async def get_student_lessons(
         .all()
     )
 
-# --- UNIFIED GET FOR INSTRUCTORS ---
 @router.get("/instructor/{instructor_profile_id}/lessons", response_model=list[schemas.LessonResponse])
 async def get_instructor_lessons(
     instructor_profile_id: UUID,
@@ -47,10 +47,11 @@ async def get_instructor_lessons(
     db: Session = Depends(get_db)
 ):
     user_info = await tools.get_user(token)
-    # Authorization logic (Admin or self)
-    if user_info['role'] != 'admin':
-        # ... ownership check as implemented before ...
-        pass
+    if not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view these lessons."
+        )
 
     return (
         db.query(models.CaLessons)
@@ -62,12 +63,9 @@ async def get_instructor_lessons(
         .all()
     )
 
-# --------------------------------------- c ud -----------------------------------------------------------------
-
-from sqlalchemy import or_, and_
+# --------------------------------------- c ud -------------------------------------------------------------------------
 
 
-# --- HELPER: PERMISSION CHECK ---
 async def verify_calendar_write_access(token: str):
     user_info = await tools.get_user(token)
     if user_info.get("role") not in ["admin", "instructor"]:
@@ -78,19 +76,17 @@ async def verify_calendar_write_access(token: str):
     return user_info
 
 
-# --- HELPER: CONFLICT CHECK ---
 def check_lesson_conflict(db: Session, instructor_id, student_id, start, end, ignore_id=None):
     # Check if times are valid
     if start >= end:
         raise HTTPException(status_code=400, detail="Start time must be before end time")
 
-    # Query for overlapping lessons for either the instructor OR the student
+
     query = db.query(models.CaLessons).filter(
         or_(
             models.CaLessons.instructor_id == instructor_id,
             models.CaLessons.student_id == student_id
         ),
-        # Overlap logic: (StartA < EndB) AND (EndA > StartB)
         and_(
             models.CaLessons.start_time < end,
             models.CaLessons.end_time > start
@@ -109,26 +105,22 @@ def check_lesson_conflict(db: Session, instructor_id, student_id, start, end, ig
         )
 
 
-# --- ADD LESSON ---
 @router.post("/lessons", response_model=schemas.LessonResponse)
 async def add_lesson(
         lesson_in: schemas.LessonCreate,
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Admin and Instructors can create lessons. Checks for schedule conflicts."""
+
     await verify_calendar_write_access(token)
 
-    # 1. Conflict detection (Instructor or Student already busy)
     check_lesson_conflict(db, lesson_in.instructor_id, lesson_in.student_id, lesson_in.start_time, lesson_in.end_time)
 
-    # 2. Create the record
     new_lesson = models.CaLessons(**lesson_in.model_dump())
     db.add(new_lesson)
     db.commit()
     db.refresh(new_lesson)
 
-    # 3. Re-fetch with joinedloads so the unified response has instructor/student names
     return (
         db.query(models.CaLessons)
         .options(
@@ -140,7 +132,6 @@ async def add_lesson(
     )
 
 
-# --- MODIFY LESSON ---
 @router.put("/lessons/{lesson_id}", response_model=schemas.LessonResponse)
 async def update_lesson(
         lesson_id: UUID,
@@ -148,14 +139,12 @@ async def update_lesson(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Admin and Instructors can modify lessons (times or status)."""
     await verify_calendar_write_access(token)
 
     db_lesson = db.query(models.CaLessons).filter(models.CaLessons.id == lesson_id).first()
     if not db_lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # 1. If times are changing, validate they don't overlap with other existing lessons
     new_start = lesson_update.start_time or db_lesson.start_time
     new_end = lesson_update.end_time or db_lesson.end_time
 
@@ -169,7 +158,6 @@ async def update_lesson(
             ignore_id=lesson_id
         )
 
-    # 2. Apply updates (status, times, etc.)
     update_data = lesson_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_lesson, key, value)
@@ -177,7 +165,6 @@ async def update_lesson(
     db.commit()
     db.refresh(db_lesson)
 
-    # 3. Return the unified object with joined info
     return (
         db.query(models.CaLessons)
         .options(
@@ -189,14 +176,12 @@ async def update_lesson(
     )
 
 
-# --- REMOVE LESSON ---
 @router.delete("/lessons/{lesson_id}")
 async def delete_lesson(
         lesson_id: UUID,
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Admin and Instructors can remove/cancel lessons."""
     await verify_calendar_write_access(token)
 
     db_lesson = db.query(models.CaLessons).filter(models.CaLessons.id == lesson_id).first()

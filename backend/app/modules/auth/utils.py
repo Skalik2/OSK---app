@@ -3,16 +3,12 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
-# Suppress passlib's internal warnings regarding legacy backends
 logging.getLogger("passlib").setLevel(logging.ERROR)
 
-# --- Configuration ---
-# In production, load these from environment variables (.env)
 SECRET_KEY = "asdagfshgadgaa"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Using Argon2 as the primary scheme (avoids bcrypt-related ValueErrors)
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 def hash_password(password: str) -> str:
