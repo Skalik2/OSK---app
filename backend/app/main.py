@@ -13,18 +13,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
+origins = [
+    "http://localhost:3000",    # React (Create React App)
+    "http://localhost:5173",    # React (Vite)
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Podpinanie routerów pod główną instancję aplikacji
-app.include_router(student_router.router)
 app.include_router(auth_router.router)
+app.include_router(student_router.router)
 app.include_router(instructor_router.router)
 app.include_router(calendar_router.router)
 # app.include_router(admin_router.router)

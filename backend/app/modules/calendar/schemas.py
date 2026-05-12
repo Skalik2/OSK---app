@@ -33,6 +33,7 @@ class LessonCreate(BaseModel):
     start_time: datetime
     end_time: datetime
     status: Optional[str] = "SCHEDULED"
+    
 class LessonUpdate(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
