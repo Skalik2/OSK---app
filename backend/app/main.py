@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.modules.student import router as student_router
 from app.modules.auth import router as auth_router
 from app.modules.instructor import router as instructor_router
-# from app.modules.calendar import router as calendar_router
+from app.modules.calendar import router as calendar_router
 # from app.modules.admin import router as admin_router
 
 app = FastAPI(
@@ -26,7 +26,7 @@ app.add_middleware(
 app.include_router(student_router.router)
 app.include_router(auth_router.router)
 app.include_router(instructor_router.router)
-# app.include_router(calendar_router.router)
+app.include_router(calendar_router.router)
 # app.include_router(admin_router.router)
 
 @app.get("/")
