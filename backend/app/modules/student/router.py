@@ -49,6 +49,13 @@ async def register_student_profile(
     user_info = await tools.get_user(token)
     user_id = user_info['id']
 
+    existing_user = (db.query(models.AuUsers)
+                     .filter(models.AuUsers.id == user_id)
+                     .filter(models.AuUsers.role == "student")
+                     .first())
+    if not existing_user:
+        raise HTTPException(status_code=400, detail="Role mismatch")
+
     # 2. Check if a profile already exists for this user
     existing_profile = db.query(models.StProfiles).filter(models.StProfiles.user_id == user_id).first()
     if existing_profile:
