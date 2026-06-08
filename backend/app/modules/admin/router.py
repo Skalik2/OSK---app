@@ -1,3 +1,4 @@
+# --- PATH: app/modules/admin/router.py ---
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -14,10 +15,11 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# Points to the central login handler on the Auth Microservice for automatic docs documentation
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login")
 
-# Points directly to your Auth Microservice deployment address
-AUTH_SERVICE_URL = "http://localhost:8000"
+# Points cleanly directly to your Auth Microservice instance on 8001
+AUTH_SERVICE_URL = "http://localhost:8001"
 
 
 # --- Role Validation Guard ---
@@ -34,7 +36,7 @@ async def verify_only_admin(token: str) -> dict:
 
 # --- Endpoints ---
 
-@router.post("/register_user")
+@router.post("/register_initial")
 async def register_admin_auth(
         user_in: schemas.AdminAuthCreate,
         token: str = Depends(oauth2_scheme)
@@ -53,10 +55,11 @@ async def register_admin_auth(
         "role": "admin"
     }
 
-    # 3. Communicate with the standalone Auth microservice
+    # 3. Communicate with the standalone Auth microservice on Port 8001
     async with httpx.AsyncClient() as client:
         try:
             headers = {"Authorization": f"Bearer {token}"}
+            # Hits our unified registration path on port 8001
             response = await client.post(
                 f"{AUTH_SERVICE_URL}/auth/register_staff",
                 json=registration_data,
@@ -67,7 +70,7 @@ async def register_admin_auth(
                 raise HTTPException(status_code=400, detail="Email already registered")
             elif response.status_code == 403:
                 raise HTTPException(status_code=403, detail="Auth service rejected request (Caller lacks permission)")
-            elif response.status_code != 201:
+            elif response.status_code != 201:  # Auth service returns 201 on success
                 raise HTTPException(status_code=500, detail="Auth service error")
 
             return response.json()
@@ -76,7 +79,7 @@ async def register_admin_auth(
             raise HTTPException(status_code=503, detail="Auth service is down")
 
 
-@router.post("/register_profile", response_model=schemas.AdminProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register_full", status_code=status.HTTP_201_CREATED)
 async def register_admin_profile(
         profile_in: schemas.AdminProfileCreate,
         token: str = Depends(oauth2_scheme),
@@ -89,14 +92,17 @@ async def register_admin_profile(
     # 1. Check permissions
     await verify_only_admin(token)
 
-    # 2. Prevent creating duplicate profiles for the same user ID
-    existing_profile = db.query(models.AdProfiles).filter(models.AdProfiles.user_id == profile_in.user_id).first()
+    # 2. Enforce explicit UUID type conversion to avoid schema runtime casting bugs
+    target_user_id = UUID(str(profile_in.user_id))
+
+    # 3. Prevent creating duplicate profiles for the same user ID
+    existing_profile = db.query(models.AdProfiles).filter(models.AdProfiles.user_id == target_user_id).first()
     if existing_profile:
         raise HTTPException(status_code=400, detail="A profile already exists for this administrative user")
 
-    # 3. Save the new profile record locally
+    # 4. Save the new profile record locally
     new_profile = models.AdProfiles(
-        user_id=profile_in.user_id,
+        user_id=target_user_id,
         first_name=profile_in.first_name,
         last_name=profile_in.last_name,
         position=profile_in.position
@@ -105,25 +111,30 @@ async def register_admin_profile(
     db.add(new_profile)
     db.commit()
     db.refresh(new_profile)
-    return new_profile
+
+    return {
+        "message": "Admin profile created successfully",
+        "admin_profile_id": new_profile.id,
+        "user_id": new_profile.user_id
+    }
 
 
-@router.get("/profile/me", response_model=schemas.AdminProfileResponse)
+@router.get("/profile/me")
 async def get_my_admin_profile(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
     """Fetches full details of the calling Admin profile."""
     user_info = await verify_only_admin(token)
-    user_id = user_info.get("id")
+    user_id = UUID(user_info.get("id"))
 
     profile = db.query(models.AdProfiles).filter(models.AdProfiles.user_id == user_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Admin data profile record not found.")
 
     return {
-        "id": profile.id,
-        "user_id": profile.user_id,
+        "id": profile.id,                 # Explicit local profile table primary key
+        "user_id": profile.user_id,       # Explicit global user account uuid mapping
         "email": user_info.get("email"),
         "first_name": profile.first_name,
         "last_name": profile.last_name,
@@ -132,7 +143,7 @@ async def get_my_admin_profile(
     }
 
 
-@router.put("/profile/me/position", response_model=schemas.AdminProfileResponse)
+@router.put("/profile/me/position")
 async def update_admin_position(
         position_data: schemas.AdminPositionUpdate,
         token: str = Depends(oauth2_scheme),
@@ -140,7 +151,7 @@ async def update_admin_position(
 ):
     """Allows an administrator to modify their administrative or internal position description."""
     user_info = await verify_only_admin(token)
-    user_id = user_info.get("id")
+    user_id = UUID(user_info.get("id"))
 
     profile = db.query(models.AdProfiles).filter(models.AdProfiles.user_id == user_id).first()
     if not profile:

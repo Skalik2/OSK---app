@@ -1,16 +1,14 @@
-from sqlalchemy.orm import Session
-from app.database import get_db
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from app.modules.instructor import schemas
-from app.modules.auth import schemas as auth_schema
-from app import models, tools
+# --- PATH: app/modules/instructor/router.py ---
 import httpx
 from uuid import UUID
-from sqlalchemy.orm import Session, joinedload
 from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session, joinedload
 
-
+from app.database import get_db
+from app import models, tools
+from app.modules.instructor import schemas
 
 router = APIRouter(
     prefix="/instructor",
@@ -18,30 +16,36 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login")
 
-@router.post("/register_user")
-async def register_instructor_auth(user_in: auth_schema.UserCreate):
+@router.post("/register_initial")
+async def register_instructor_auth(email: str, password: str):
+    """
+    Proxies registration to the Auth Microservice (Port 8001).
+    Bypasses local auth schemas entirely since they are redundant.
+    """
     registration_data = {
-        "email": user_in.email,
-        "password": user_in.password,
+        "email": email,
+        "password": password,
         "role": "instructor"
     }
 
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post("http://localhost:8000/auth/register", json=registration_data)
+            # Pointed cleanly directly to our Auth Microservice instance on 8001
+            response = await client.post("http://localhost:8001/auth/register", json=registration_data)
 
             if response.status_code == 400:
                 raise HTTPException(status_code=400, detail="Email already registered")
 
-            if response.status_code != 200:
+            if response.status_code != 201:  # Auth service returns 201 on success
                 raise HTTPException(status_code=500, detail="Auth service error")
 
             return response.json()
 
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="Auth service is down")
+
 
 @router.post("/register_full")
 async def register_instructor_profile(
@@ -50,14 +54,11 @@ async def register_instructor_profile(
         db: Session = Depends(get_db)
 ):
     user_info = await tools.get_user(token)
-    user_id = user_info['id']
+    user_id = UUID(user_info['id'])
 
-    existing_user = (db.query(models.AuUsers)
-                        .filter(models.AuUsers.id == user_id)
-                        .filter(models.AuUsers.role == "instructor")
-                        .first())
-    if not existing_user:
-        raise HTTPException(status_code=400, detail="Role mismatch")
+    # Enforce token role matches the route requirement
+    if user_info.get("role") != "instructor":
+        raise HTTPException(status_code=403, detail="Role mismatch")
 
     existing_profile = db.query(models.InProfiles).filter(models.InProfiles.user_id == user_id).first()
     if existing_profile:
@@ -85,7 +86,7 @@ async def check_instructor_status(
         db: Session = Depends(get_db)
 ):
     user_info = await tools.get_user(token)
-    user_id = user_info['id']
+    user_id = UUID(user_info['id'])
 
     profile = db.query(models.InProfiles).filter(models.InProfiles.user_id == user_id).first()
 
@@ -100,6 +101,7 @@ async def get_instructor_profile_by_id(
         instructor_id: UUID,
         db: Session = Depends(get_db)
 ):
+    # instructor_id parameter passed down is the auth user_id
     profile = (
         db.query(models.InProfiles)
         .options(joinedload(models.InProfiles.user))
@@ -125,18 +127,25 @@ async def get_instructor_profile_by_id(
     }
 
 
-# ------------------------------------------------------------------------------------ specki --------------------------
+# ------------------------------------------------------------------------------------ specialties --------------------------
 async def verify_management_permission(token: str, target_instructor_profile_id: UUID, db: Session):
+    """Verifies if caller is an admin or is the instructor owning this specific profile id."""
     user_info = await tools.get_user(token)
     user_role = user_info.get("role")
-    user_id = user_info.get("id")
+    user_id = UUID(user_info.get("id"))
 
-    if user_role == "admin" or user_id == target_instructor_profile_id:
+    if user_role == "admin":
         return True
-    return False
+
+    # Look up who owns this instructor profile
+    profile = db.query(models.InProfiles).filter(models.InProfiles.id == target_instructor_profile_id).first()
+    if profile and profile.user_id == user_id:
+        return True
+
+    raise HTTPException(status_code=403, detail="Permission denied")
 
 
-@router.get("/all/{instructor_profile_id}", response_model=List[schemas.SpecialtyResponse])
+@router.get("/specialities/all/{instructor_profile_id}", response_model=List[schemas.SpecialtyResponse])
 async def get_instructor_specialties(
         instructor_profile_id: UUID,
         db: Session = Depends(get_db)
@@ -145,7 +154,8 @@ async def get_instructor_specialties(
         models.InSpecialties.instructor_profile_id == instructor_profile_id
     ).all()
 
-@router.post("/add/{instructor_profile_id}", response_model=schemas.SpecialtyResponse)
+
+@router.post("/specialities/add/{instructor_profile_id}", response_model=schemas.SpecialtyResponse)
 async def add_specialty(
         instructor_profile_id: UUID,
         specialty_in: schemas.SpecialtyCreate,
@@ -172,7 +182,7 @@ async def add_specialty(
     return new_specialty
 
 
-@router.put("/edit/{specialty_id}", response_model=schemas.SpecialtyResponse)
+@router.put("/specialities/edit/{specialty_id}", response_model=schemas.SpecialtyResponse)
 async def update_specialty(
         specialty_id: UUID,
         specialty_update: schemas.SpecialtyCreate,
@@ -199,7 +209,7 @@ async def update_specialty(
     return db_specialty
 
 
-@router.delete("/remove/{specialty_id}")
+@router.delete("/specialities/remove/{specialty_id}")
 async def delete_specialty(
         specialty_id: UUID,
         token: str = Depends(oauth2_scheme),
