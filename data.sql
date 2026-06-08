@@ -11,20 +11,20 @@ TRUNCATE TABLE auth.au_users CASCADE;
 -- 1. DODAWANIE UŻYTKOWNIKÓW (auth.au_users) I ICH PROFILI
 -------------------------------------------------------------------------------
 
--- ADMIN
+-- ADMIN (Hasło: password123)
 WITH inserted_admin AS (
-    INSERT INTO auth.au_users (email, password_hash, role) -- te hashe to niby password123
-    VALUES ('admin@szkolajazdy.pl', '$2b$12$eImiTXuWVxfM37uY4JANjOL.oFqLPVM3DeC6Z93R/5clW7TEW657.', 'admin')
+    INSERT INTO auth.au_users (email, password_hash, role)
+    VALUES ('admin@szkolajazdy.pl', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'admin')
     RETURNING id
 )
 INSERT INTO admin.ad_profiles (user_id, first_name, last_name, position)
 SELECT id, 'Janusz', 'Kowalski', 'Dyrektor Zarządzający' FROM inserted_admin;
 
 
--- INSTRUKTORZY
+-- INSTRUKTORZY (Hasło: password123)
 WITH ins1 AS (
     INSERT INTO auth.au_users (email, password_hash, role)
-    VALUES ('tomasz.nowak@szkolajazdy.pl', '$2b$12$eImiTXuWVxfM37uY4JANjOL.oFqLPVM3DeC6Z93R/5clW7TEW657.', 'instructor')
+    VALUES ('tomasz.nowak@szkolajazdy.pl', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'instructor')
     RETURNING id
 ), prof1 AS (
     INSERT INTO instructor.in_profiles (user_id, first_name, last_name, phone, license_number, bio)
@@ -36,7 +36,7 @@ SELECT id, 'B' FROM prof1;
 
 WITH ins2 AS (
     INSERT INTO auth.au_users (email, password_hash, role)
-    VALUES ('anna.wisniewska@szkolajazdy.pl', '$2b$12$eImiTXuWVxfM37uY4JANjOL.oFqLPVM3DeC6Z93R/5clW7TEW657.', 'instructor')
+    VALUES ('anna.wisniewska@szkolajazdy.pl', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'instructor')
     RETURNING id
 ), prof2 AS (
     INSERT INTO instructor.in_profiles (user_id, first_name, last_name, phone, license_number, bio)
@@ -47,10 +47,10 @@ INSERT INTO instructor.in_specialties (instructor_profile_id, category)
 SELECT id, 'AM' FROM prof2;
 
 
--- KURSANCI
+-- KURSANCI (Hasło: password123)
 WITH stu1 AS (
     INSERT INTO auth.au_users (email, password_hash, role)
-    VALUES ('mateusz.zielinski@poczta.pl', '$2b$12$eImiTXuWVxfM37uY4JANjOL.oFqLPVM3DeC6Z93R/5clW7TEW657.', 'student')
+    VALUES ('mateusz.zielinski@poczta.pl', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'student')
     RETURNING id
 ), prof_stu1 AS (
     INSERT INTO student.st_profiles (user_id, first_name, last_name, phone)
@@ -62,7 +62,7 @@ SELECT id, 'B', 30, 12, 'PAID' FROM prof_stu1;
 
 WITH stu2 AS (
     INSERT INTO auth.au_users (email, password_hash, role)
-    VALUES ('katarzyna.wojcik@gmail.com', '$2b$12$eImiTXuWVxfM37uY4JANjOL.oFqLPVM3DeC6Z93R/5clW7TEW657.', 'student')
+    VALUES ('katarzyna.wojcik@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'student')
     RETURNING id
 ), prof_stu2 AS (
     INSERT INTO student.st_profiles (user_id, first_name, last_name, phone)
@@ -75,7 +75,6 @@ SELECT id, 'AM', 20, 2, 'PENDING' FROM prof_stu2;
 
 -------------------------------------------------------------------------------
 -- 2. DODAWANIE LEKCJI DO KALENDARZA (calendar.ca_lessons)
--- Dynamicznie pobieramy ID nowo stworzonych profili, aby zachować relacje
 -------------------------------------------------------------------------------
 
 INSERT INTO calendar.ca_lessons (instructor_id, student_id, start_time, end_time, status)
