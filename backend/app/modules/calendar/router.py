@@ -7,6 +7,9 @@ from uuid import UUID
 from database import get_db
 import models, tools
 from modules.calendar import schemas
+import asyncio
+from datetime import datetime, timedelta
+from .weather_service import get_weather_for_date
 
 router = APIRouter(
     prefix="/calendar",
@@ -60,7 +63,11 @@ def check_lesson_conflict(
             detail=f"Time conflict detected for the {person}."
         )
 
-
+async def enrich_lesson_with_weather(lesson):
+    if lesson.start_time.date() <= (datetime.now().date() + timedelta(days=7)):
+        lat, lon = 50.025870, 21.983561
+        lesson.weather = await get_weather_for_date(lat, lon, lesson.start_time.date())
+    return lesson
 
 @router.get("/student/{student_profile_id}/lessons", response_model=List[schemas.LessonResponse])
 async def get_student_lessons(
@@ -82,15 +89,18 @@ async def get_student_lessons(
                 detail="You do not have authorization to view these lessons."
             )
 
-    return (
-        db.query(models.CaLessons)
+
+
+
+    lessons = (db.query(models.CaLessons)
         .options(
             joinedload(models.CaLessons.instructor),
             joinedload(models.CaLessons.student)
         )
         .filter(models.CaLessons.student_id == student_profile_id)
-        .all()
-    )
+        .all())
+    return await asyncio.gather(*[enrich_lesson_with_weather(l) for l in lessons])
+
 
 
 @router.get("/instructor/{instructor_profile_id}/lessons", response_model=List[schemas.LessonResponse])
@@ -114,7 +124,7 @@ async def get_instructor_lessons(
                 detail="Access restricted to owner instructor or platform administrator."
             )
 
-    return (
+    lessons =  (
         db.query(models.CaLessons)
         .options(
             joinedload(models.CaLessons.instructor),
@@ -123,6 +133,7 @@ async def get_instructor_lessons(
         .filter(models.CaLessons.instructor_id == instructor_profile_id)
         .all()
     )
+    return await asyncio.gather(*[enrich_lesson_with_weather(l) for l in lessons])
 
 
 @router.post("/lessons", response_model=schemas.LessonResponse)

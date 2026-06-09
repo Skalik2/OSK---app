@@ -1,0 +1,1 @@
+select * from calendar.ca_lessons

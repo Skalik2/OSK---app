@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from router import router as auth_router
 
 app = FastAPI(
-    title="Mikro serwis autoryzacji",
+    title="Mikro serwis autentykacji",
     description="Odpowiedzialny za uwierzytelnienie użytkowników i tworzenie nowych",
     version="1.0.0"
 )
@@ -27,4 +27,4 @@ app.include_router(auth_router)
 
 @app.get("/")
 def read_root():
-    return {"status": "ok", "message": "Mikro serwis autoryzacji działa"}
+    return {"status": "ok", "message": "Mikro serwis autentykacji działa"}

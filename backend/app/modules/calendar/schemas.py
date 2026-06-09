@@ -14,6 +14,12 @@ class ProfileMinInfo(BaseModel):
         from_attributes = True
 
 
+class WeatherInfo(BaseModel):
+    max_temp: float
+    weather_code: int
+    description: str
+
+
 class LessonResponse(BaseModel):
     id: UUID
     instructor_profile_id: UUID = Field(..., alias="instructor_id")
@@ -22,6 +28,8 @@ class LessonResponse(BaseModel):
     end_time: datetime
     status: str
     created_at: Optional[datetime]
+
+    weather: Optional[WeatherInfo] = None
 
     instructor: Optional[ProfileMinInfo] = None
     student: Optional[ProfileMinInfo] = None
