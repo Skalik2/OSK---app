@@ -1,4 +1,3 @@
-# --- PATH: app/tools.py ---
 import httpx
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
