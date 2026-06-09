@@ -85,14 +85,14 @@ export default function ScheduleView() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-on-surface">Harmonogram</h1>
         <p className="text-lg text-on-surface-variant font-medium mt-1">
-          Lista wszystkich zaplanowanych lekcji.
+          All planned lessons.
         </p>
       </div>
 
       <div className="flex flex-col gap-4">
         {lessons.length === 0 ? (
           <div className="bg-white border border-outline-variant rounded-2xl p-12 text-center shadow-sm">
-            <p className="text-on-surface-variant font-medium">Brak zaplanowanych lekcji.</p>
+            <p className="text-on-surface-variant font-medium">No planned lessons.</p>
           </div>
         ) : (
           lessons.map((lesson, i) => (

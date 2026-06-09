@@ -96,7 +96,7 @@ export default function Login() {
                 }
               `}
             >
-              {role === 'instructor' ? 'Instruktor' : 'Kursant'}
+              {role === 'instructor' ? 'Instructor' : 'Student'}
             </button>
           ))}
         </div>
@@ -130,7 +130,6 @@ export default function Login() {
             <div className="space-y-1.5">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-xs font-bold text-on-surface uppercase tracking-wider" htmlFor="password">Password</label>
-                <button type="button" className="text-xs font-bold text-primary hover:underline">Forgot password?</button>
               </div>
               <div className="relative group">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
@@ -159,8 +158,8 @@ export default function Login() {
 
         <footer className="text-center pt-8 border-t border-outline-variant/30">
           <p className="text-xs font-medium text-on-surface-variant">
-            Nie masz konta? 
-            <Link to="/register" className="text-primary hover:underline ml-1 font-bold">Zarejestruj się</Link>
+            No account? 
+            <Link to="/register" className="text-primary hover:underline ml-1 font-bold">Register now</Link>
           </p>
         </footer>
       </motion.div>

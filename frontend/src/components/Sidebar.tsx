@@ -52,7 +52,7 @@ export default function Sidebar({ role }: SidebarProps) {
             </motion.div>
             <div>
               <h1 className="text-xl font-bold leading-tight">OSK WGW Co.</h1>
-              <p className="text-xs text-secondary-fixed-dim">Aplikacja</p>
+              <p className="text-xs text-secondary-fixed-dim">App</p>
             </div>
           </div>
         </div>
