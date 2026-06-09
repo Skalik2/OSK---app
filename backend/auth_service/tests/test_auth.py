@@ -1,8 +1,8 @@
 # --- PATH: auth_service/tests/test_auth.py ---
 import pytest
 import httpx
-from auth_service.main import app
-from auth_service.database import get_db
+from main import app
+from database import get_db
 
 # Use ASGITransport for processing internal async cycles
 transport = httpx.ASGITransport(app=app)
@@ -71,7 +71,7 @@ async def test_admin_can_successfully_register_another_admin(override_get_db, db
     app.dependency_overrides[get_db] = override_get_db
 
     # 1. Seed a uniquely named master admin into our nested database sandbox context
-    from auth_service import models, utils
+    import models, utils
 
     master_admin = models.AuUsers(
         email="temporary.test.admin@szkolajazdy.pl",  # Changed to ensure no overlap with existing records

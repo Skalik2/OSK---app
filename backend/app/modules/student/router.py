@@ -1,10 +1,10 @@
 # --- PATH: app/modules/student/router.py ---
 from sqlalchemy.orm import Session
-from app.database import get_db
+from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from app.modules.student import schemas
-from app import models, tools
+from modules.student import schemas
+import models, tools
 from typing import List
 import httpx
 from uuid import UUID

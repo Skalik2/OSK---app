@@ -1,6 +1,6 @@
 # --- PATH: app/modules/auth/router.py ---
 from fastapi import APIRouter, Depends
-from app.tools import get_user  # <-- Changed here
+from tools import get_user  # <-- Changed here
 
 router = APIRouter(
     prefix="/auth",

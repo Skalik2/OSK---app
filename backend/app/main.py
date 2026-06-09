@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.modules.student import router as student_router
-from app.modules.auth import router as auth_router
-from app.modules.instructor import router as instructor_router
-from app.modules.calendar import router as calendar_router
-from app.modules.admin import router as admin_router
+from modules.student import router as student_router
+from modules.auth import router as auth_router
+from modules.instructor import router as instructor_router
+from modules.calendar import router as calendar_router
+from modules.admin import router as admin_router
 
 app = FastAPI(
     title="OSK Core API",

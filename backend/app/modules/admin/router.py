@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 import httpx
 from uuid import UUID
 
-from app.database import get_db
-from app import models, tools
-from app.modules.admin import schemas
+from database import get_db
+import models, tools
+from modules.admin import schemas
 
 router = APIRouter(
     prefix="/admin",

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from auth_service.router import router as auth_router
+from router import router as auth_router
 
 app = FastAPI(
     title="OSK Dedicated Auth Microservice",

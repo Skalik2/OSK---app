@@ -2,8 +2,8 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from auth_service.database import Base, get_db
-from auth_service.main import app
+from database import Base, get_db
+from main import app
 
 SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://root:rootpassword@localhost:5432/osk_default"
 

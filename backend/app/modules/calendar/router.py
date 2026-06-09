@@ -6,9 +6,9 @@ from sqlalchemy import or_, and_
 from typing import List
 from uuid import UUID
 
-from app.database import get_db
-from app import models, tools
-from app.modules.calendar import schemas
+from database import get_db
+import models, tools
+from modules.calendar import schemas
 
 router = APIRouter(
     prefix="/calendar",

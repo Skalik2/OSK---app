@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db
-from app import models, tools
-from app.modules.instructor import schemas
+from database import get_db
+import models, tools
+from modules.instructor import schemas
 
 router = APIRouter(
     prefix="/instructor",
