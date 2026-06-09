@@ -1,4 +1,3 @@
-# --- PATH: app/modules/student/router.py ---
 from sqlalchemy.orm import Session
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,9 +19,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login"
 
 @router.post("/register_initial")
 async def register_student_auth(email: str, password: str):
-    """
-    Proxies student authentication account creation to Port 8001.
-    """
     registration_data = {
         "email": email,
         "password": password,
@@ -53,7 +49,6 @@ async def register_student_profile(
 ):
     user_info = await tools.get_user(token)
 
-    # Enforce strict verification that bearer is actually a student
     if user_info.get("role") != "student":
         raise HTTPException(status_code=403, detail="Role mismatch")
 
@@ -96,9 +91,7 @@ async def check_registration_status(
     return {"in_between_phases": True, "message": "Auth created, profile missing"}
 
 
-# --------------------- courses -----------------------------------------------------------------------------------
-
-# --- Permission Helpers ---
+# --------------------- courses ----------------------------------------------------------------------------------------
 
 async def verify_admin_or_instructor(token: str) -> dict:
     user_info = await tools.get_user(token)
@@ -120,15 +113,12 @@ async def verify_only_admin(token: str) -> dict:
     return user_info
 
 
-# --- Endpoints ---
-
 @router.post("/courses/register", response_model=schemas.CourseResponse, status_code=status.HTTP_201_CREATED)
 async def register_student_course(
         course_in: schemas.CourseCreate,
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Enrolls a student inside a practical driving course bracket."""
     await verify_admin_or_instructor(token)
 
     student_profile = db.query(models.StProfiles).filter(
@@ -171,7 +161,6 @@ async def get_my_courses(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Allows a student caller to see their own active driving classes."""
     user_info = await tools.get_user(token)
     user_id = UUID(user_info.get("id"))
 
@@ -183,14 +172,12 @@ async def get_my_courses(
     return db.query(models.StCourses).filter(models.StCourses.student_profile_id == student_profile.id).all()
 
 
-# Enforced strict nomenclature path parameter designation: {student_profile_id}
 @router.get("/courses/profile/{student_profile_id}", response_model=List[schemas.CourseResponse])
 async def get_courses_by_student_profile(
         student_profile_id: UUID,
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Fetches courses assigned to a specific target student profile uuid."""
     user_info = await tools.get_user(token)
     user_role = user_info.get("role")
     user_id = UUID(user_info.get("id"))
@@ -199,7 +186,6 @@ async def get_courses_by_student_profile(
     if not student_profile:
         raise HTTPException(status_code=404, detail="Student profile not found.")
 
-    # Access security check using standard matching terminology variables
     if user_role not in ["admin", "instructor"] and user_id != student_profile.user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

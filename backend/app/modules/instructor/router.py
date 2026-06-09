@@ -1,4 +1,3 @@
-# --- PATH: app/modules/instructor/router.py ---
 import httpx
 from uuid import UUID
 from typing import List
@@ -20,10 +19,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login"
 
 @router.post("/register_initial")
 async def register_instructor_auth(email: str, password: str):
-    """
-    Proxies registration to the Auth Microservice (Port 8001).
-    Bypasses local auth schemas entirely since they are redundant.
-    """
     registration_data = {
         "email": email,
         "password": password,
@@ -32,13 +27,12 @@ async def register_instructor_auth(email: str, password: str):
 
     async with httpx.AsyncClient() as client:
         try:
-            # Pointed cleanly directly to our Auth Microservice instance on 8001
             response = await client.post("http://localhost:8001/auth/register", json=registration_data)
 
             if response.status_code == 400:
                 raise HTTPException(status_code=400, detail="Email already registered")
 
-            if response.status_code != 201:  # Auth service returns 201 on success
+            if response.status_code != 201:
                 raise HTTPException(status_code=500, detail="Auth service error")
 
             return response.json()
@@ -101,7 +95,6 @@ async def get_instructor_profile_by_id(
         instructor_id: UUID,
         db: Session = Depends(get_db)
 ):
-    # instructor_id parameter passed down is the auth user_id
     profile = (
         db.query(models.InProfiles)
         .options(joinedload(models.InProfiles.user))
@@ -127,7 +120,7 @@ async def get_instructor_profile_by_id(
     }
 
 
-# ------------------------------------------------------------------------------------ specialties --------------------------
+# ------------------------------------------------------------------------------------ specialties ---------------------
 async def verify_management_permission(token: str, target_instructor_profile_id: UUID, db: Session):
     """Verifies if caller is an admin or is the instructor owning this specific profile id."""
     user_info = await tools.get_user(token)
@@ -137,7 +130,6 @@ async def verify_management_permission(token: str, target_instructor_profile_id:
     if user_role == "admin":
         return True
 
-    # Look up who owns this instructor profile
     profile = db.query(models.InProfiles).filter(models.InProfiles.id == target_instructor_profile_id).first()
     if profile and profile.user_id == user_id:
         return True

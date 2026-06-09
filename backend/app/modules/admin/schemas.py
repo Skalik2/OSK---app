@@ -3,12 +3,10 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
-# Input to create the core Admin login row via Auth Microservice
 class AdminAuthCreate(BaseModel):
     email: EmailStr
     password: str
 
-# Input to populate the profile data row locally
 class AdminProfileCreate(BaseModel):
     user_id: UUID
     first_name: str = Field(..., max_length=100)

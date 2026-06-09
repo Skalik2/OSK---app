@@ -3,11 +3,9 @@ import httpx
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 
-# Ensure the core app points directly to your port 8001 microservice login for docs
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login")
 
 async def get_user_from_auth(token: str):
-    """Hits the isolated Auth Microservice on Port 8001 to verify a JWT."""
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
@@ -24,7 +22,6 @@ async def get_user_from_auth(token: str):
             )
 
 async def get_user(token: str = Depends(oauth2_scheme)):
-    """FastAPI Dependency to inject verified user token details into routes."""
     user_data = await get_user_from_auth(token)
     if not user_data:
         raise HTTPException(

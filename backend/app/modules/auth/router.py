@@ -1,6 +1,5 @@
-# --- PATH: app/modules/auth/router.py ---
 from fastapi import APIRouter, Depends
-from tools import get_user  # <-- Changed here
+from tools import get_user
 
 router = APIRouter(
     prefix="/auth",
@@ -8,9 +7,5 @@ router = APIRouter(
 )
 
 @router.get("/verify")
-def verify_token(current_user: dict = Depends(get_user)):  # <-- Changed here
-    """
-    Proxies requests from internal network callers to verify tokens.
-    Returns the parsed user authorization dictionary (id, email, role).
-    """
+def verify_token(current_user: dict = Depends(get_user)):
     return current_user

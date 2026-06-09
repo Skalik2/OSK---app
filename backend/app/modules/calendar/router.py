@@ -1,11 +1,9 @@
-# --- PATH: app/modules/calendar/router.py ---
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 from typing import List
 from uuid import UUID
-
 from database import get_db
 import models, tools
 from modules.calendar import schemas
@@ -15,11 +13,8 @@ router = APIRouter(
     tags=["Calendar"]
 )
 
-# Points seamlessly to our central login handler on the Auth Microservice
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login")
 
-
-# --- Permission Helpers ---
 
 async def verify_calendar_write_access(token: str) -> dict:
     """Verifies with token helper that the caller is authorized to modify schedules."""
@@ -66,7 +61,6 @@ def check_lesson_conflict(
         )
 
 
-# --- Endpoints ---
 
 @router.get("/student/{student_profile_id}/lessons", response_model=List[schemas.LessonResponse])
 async def get_student_lessons(
@@ -74,14 +68,13 @@ async def get_student_lessons(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Fetches upcoming lessons. Enforces ownership matching for student tokens."""
+
     user_info = await tools.get_user(token)
     user_role = user_info.get("role")
     user_id = UUID(user_info.get("id"))
 
-    # Enforce data row visibility bounds
+
     if user_role not in ["admin", "instructor"]:
-        # Look up what student profile row belongs to this auth account
         caller_profile = db.query(models.StProfiles).filter(models.StProfiles.user_id == user_id).first()
         if not caller_profile or caller_profile.id != student_profile_id:
             raise HTTPException(
@@ -106,14 +99,12 @@ async def get_instructor_lessons(
         token: str = Depends(oauth2_scheme),
         db: Session = Depends(get_db)
 ):
-    """Fetches assigned instructor schedules. Enforces ownership matching for instructor tokens."""
     user_info = await tools.get_user(token)
     user_role = user_info.get("role")
     user_id = UUID(user_info.get("id"))
 
-    # Enforce data row visibility bounds
     if user_role == "student":
-        raise HTTPException(status_code=403, detail="Students cannot look up raw instructor logs directly.")
+        raise HTTPException(status_code=403, detail="Students cannot look up instructor's lessons directly.")
 
     if user_role == "instructor":
         caller_profile = db.query(models.InProfiles).filter(models.InProfiles.user_id == user_id).first()
@@ -142,7 +133,6 @@ async def add_lesson(
 ):
     await verify_calendar_write_access(token)
 
-    # Validate references match secondary tables
     check_lesson_conflict(
         db,
         lesson_in.instructor_profile_id,
@@ -151,7 +141,6 @@ async def add_lesson(
         lesson_in.end_time
     )
 
-    # Map the model keys precisely to maintain relational integrity
     new_lesson = models.CaLessons(
         instructor_id=lesson_in.instructor_profile_id,
         student_id=lesson_in.student_profile_id,
