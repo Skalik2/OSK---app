@@ -2,13 +2,11 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from uuid import UUID
 
-# This schema is now strictly used for logging in, requiring the role context
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-    role: str  # Mandatory: 'admin', 'instructor', or 'student'
+    role: str
 
-# Separate schema for registration requests if needed later
 class UserCreate(BaseModel):
     email: EmailStr
     password: str

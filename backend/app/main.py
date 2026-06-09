@@ -8,8 +8,8 @@ from modules.calendar import router as calendar_router
 from modules.admin import router as admin_router
 
 app = FastAPI(
-    title="OSK Core API",
-    description="Backend Modułowy Monolit dla Ośrodka Szkolenia Kierowców",
+    title="Mikro serwis główny OSK",
+    description="Główna część backendu, odpowiada za logikę biznesową",
     version="1.0.0"
 )
 
