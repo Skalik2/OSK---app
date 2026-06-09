@@ -8,6 +8,20 @@ class StudentProfileCreate(BaseModel):
     last_name: str
     phone: Optional[str] = None
 
+class StudentProfileResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class UserCreateInitial(BaseModel):
+    email: str
+    password: str
+
 
 # obsługa kursów ------------------------------------------
 

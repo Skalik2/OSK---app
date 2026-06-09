@@ -9,6 +9,10 @@ class InstructorProfileCreate(BaseModel):
     license_number: Optional[str] = None
     bio: Optional[str] = None
 
+class UserCreateInitial(BaseModel):
+    email: str
+    password: str
+
 class InstructorProfileResponse(BaseModel):
     id: UUID
     user_id: UUID

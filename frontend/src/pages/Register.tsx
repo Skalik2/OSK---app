@@ -1,7 +1,9 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Mail, Lock, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { authApi } from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 type RegisterRole = 'instructor' | 'student';
 
@@ -13,6 +15,13 @@ export default function Register() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate(`/${user.role}`);
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -26,25 +35,28 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          role: activeRole,
-        }),
+      const response = await authApi.post('/auth/register', {
+        email,
+        password,
+        role: activeRole
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Błąd rejestracji');
-      }
 
       // Po pomyślnej rejestracji przekieruj do logowania
       navigate('/');
     } catch (err: any) {
-      setError(err.message);
+      let message = 'Błąd rejestracji';
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          message = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          message = err.response.data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+        } else {
+          message = JSON.stringify(err.response.data.detail);
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }

@@ -69,6 +69,70 @@ async def enrich_lesson_with_weather(lesson):
         lesson.weather = await get_weather_for_date(lat, lon, lesson.start_time.date())
     return lesson
 
+@router.get("/lessons", response_model=List[schemas.LessonResponse])
+async def get_all_lessons(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    user_info = await tools.get_user(token)
+    if user_info.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can view all lessons")
+
+    lessons = (db.query(models.CaLessons)
+        .options(
+            joinedload(models.CaLessons.instructor),
+            joinedload(models.CaLessons.student)
+        )
+        .all())
+    return await asyncio.gather(*[enrich_lesson_with_weather(l) for l in lessons])
+
+
+@router.get("/my_lessons", response_model=List[schemas.LessonResponse])
+async def get_my_lessons(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    user_info = await tools.get_user(token)
+    user_role = user_info.get("role")
+    user_id = UUID(user_info.get("id"))
+
+    if user_role == "admin":
+        # For admin, "my lessons" might mean all? Or we can just redirect to /lessons
+        # Let's say all for now to make it easy for admin to see schedule
+        lessons = (db.query(models.CaLessons)
+            .options(
+                joinedload(models.CaLessons.instructor),
+                joinedload(models.CaLessons.student)
+            )
+            .all())
+    elif user_role == "instructor":
+        profile = db.query(models.InProfiles).filter(models.InProfiles.user_id == user_id).first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Instructor profile not found")
+        lessons = (db.query(models.CaLessons)
+            .options(
+                joinedload(models.CaLessons.instructor),
+                joinedload(models.CaLessons.student)
+            )
+            .filter(models.CaLessons.instructor_id == profile.id)
+            .all())
+    elif user_role == "student":
+        profile = db.query(models.StProfiles).filter(models.StProfiles.user_id == user_id).first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Student profile not found")
+        lessons = (db.query(models.CaLessons)
+            .options(
+                joinedload(models.CaLessons.instructor),
+                joinedload(models.CaLessons.student)
+            )
+            .filter(models.CaLessons.student_id == profile.id)
+            .all())
+    else:
+        raise HTTPException(status_code=403, detail="Unknown role")
+
+    return await asyncio.gather(*[enrich_lesson_with_weather(l) for l in lessons])
+
+
 @router.get("/student/{student_profile_id}/lessons", response_model=List[schemas.LessonResponse])
 async def get_student_lessons(
         student_profile_id: UUID,

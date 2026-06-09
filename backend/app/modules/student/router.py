@@ -18,10 +18,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login"
 
 
 @router.post("/register_initial")
-async def register_student_auth(email: str, password: str):
+async def register_student_auth(user_data: schemas.UserCreateInitial):
     registration_data = {
-        "email": email,
-        "password": password,
+        "email": user_data.email,
+        "password": user_data.password,
         "role": "student"
     }
 
@@ -89,6 +89,43 @@ async def check_registration_status(
         return {"in_between_phases": False, "message": "Full registration complete"}
 
     return {"in_between_phases": True, "message": "Auth created, profile missing"}
+
+
+@router.get("/profile/me")
+async def get_my_student_profile(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    user_info = await tools.get_user(token)
+    user_id = UUID(user_info.get("id"))
+
+    profile = db.query(models.StProfiles).filter(models.StProfiles.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Student profile record not found.")
+
+    return {
+        "id": profile.id,
+        "user_id": profile.user_id,
+        "first_name": profile.first_name,
+        "last_name": profile.last_name,
+        "phone": profile.phone
+    }
+
+
+@router.get("/profiles", response_model=List[schemas.StudentProfileResponse])
+async def get_all_student_profiles(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    user_info = await tools.get_user(token)
+    if user_info.get("role") not in ["admin", "instructor"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operation restricted to instructors and administrators."
+        )
+
+    profiles = db.query(models.StProfiles).all()
+    return profiles
 
 
 # --------------------- courses ----------------------------------------------------------------------------------------

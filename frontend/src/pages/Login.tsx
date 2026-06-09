@@ -1,17 +1,26 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Car, Mail, Lock, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useAuth } from '../context/AuthContext';
+import { authApi } from '../api/axios';
 
-type Role = 'admin' | 'instructor' | 'student';
+type Role = 'instructor' | 'student';
 
 export default function Login() {
-  const [activeRole, setActiveRole] = useState<Role>('student'); // Zmieniono domyślną rolę na 'student'
+  const [activeRole, setActiveRole] = useState<Role>('student'); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login, isAuthenticated, user } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate(`/${user.role}`);
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -19,36 +28,33 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // Pamiętaj o dostosowaniu portu 8000, jeśli backend nasłuchuje na innym
-      const response = await fetch('http://localhost:8000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-          role: activeRole,
-        }),
+      const response = await authApi.post('/auth/login', {
+        email: email,
+        password: password,
+        role: activeRole,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Nieprawidłowe dane logowania');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       
-      // Zapisz token w localStorage
-      localStorage.setItem('token', data.access_token);
+      // Use login from AuthContext to handle token and profile status
+      await login(data.access_token, activeRole);
 
-      // Przekieruj po pomyślnym zalogowaniu
-      localStorage.setItem('userRole', activeRole);
-      if (activeRole === 'admin') navigate('/admin');
-      if (activeRole === 'instructor') navigate('/instructor');
-      if (activeRole === 'student') navigate('/student');
+      // Redirect after successful login
+      navigate(`/${activeRole}`);
     } catch (err: any) {
-      setError(err.message);
+      let message = 'Nieprawidłowe dane logowania';
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          message = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          message = err.response.data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+        } else {
+          message = JSON.stringify(err.response.data.detail);
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +81,7 @@ export default function Login() {
         </header>
 
         <div className="bg-surface-container-low p-1 rounded-xl flex items-center shadow-inner">
-          {(['admin', 'instructor', 'student'] as Role[]).map((role) => (
+          {(['instructor', 'student'] as Role[]).map((role) => (
             <button
               key={role}
               type="button"
@@ -90,7 +96,7 @@ export default function Login() {
                 }
               `}
             >
-              {role}
+              {role === 'instructor' ? 'Instruktor' : 'Kursant'}
             </button>
           ))}
         </div>

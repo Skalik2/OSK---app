@@ -1,29 +1,62 @@
 import { motion } from 'motion/react';
-import { School, Users, CreditCard, Car, CheckCircle2, RefreshCw, Calendar, XCircle, AlertTriangle, PenTool, Info } from 'lucide-react';
+import { School, Users, CreditCard, Car, CheckCircle2, RefreshCw, Calendar, XCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import api from '../api/axios';
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, profileRes] = await Promise.all([
+          api.get('/admin/stats'),
+          api.get('/admin/profile/me')
+        ]);
+        setStats(statsRes.data);
+        setProfile(profileRes.data);
+      } catch (error) {
+        console.error("Failed to fetch admin data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const metrics = [
-    { label: 'Total Students', value: '1,248', change: '+12% vs last month', icon: School, color: 'bg-tertiary-container text-on-tertiary-container' },
-    { label: 'Active Instructors', value: '42', change: '4 Pending', icon: Users, color: 'bg-primary-fixed text-on-primary-fixed' },
-    { label: 'Monthly Revenue', value: '$84,500', change: '+8% vs last month', icon: CreditCard, color: 'bg-secondary-container text-on-secondary-container' },
-    { label: 'Fleet Status', value: '18/20', change: '2 in shop', icon: Car, color: 'bg-surface-container-highest text-on-surface' },
+    { label: 'Total Students', value: stats?.total_students || 0, change: 'Live count', icon: School, color: 'bg-tertiary-container text-on-tertiary-container' },
+    { label: 'Active Instructors', value: stats?.total_instructors || 0, change: 'Live count', icon: Users, color: 'bg-primary-fixed text-on-primary-fixed' },
+    { label: 'Total Lessons', value: stats?.total_lessons || 0, change: 'Total scheduled', icon: Calendar, color: 'bg-secondary-container text-on-secondary-container' },
+    { label: 'Estimated Revenue', value: `$${stats?.revenue || 0}`, change: 'Current month', icon: CreditCard, color: 'bg-surface-container-highest text-on-surface' },
   ];
 
   const activities = [
-    { name: 'Jane Smith', role: 'Student', action: 'Completed Road Test Prep', status: 'Completed', time: '10 mins ago', initial: 'JS' },
-    { name: 'Mark Roberts', role: 'Instructor', action: 'Updated Availability Schedule', status: 'Updated', time: '1 hour ago', initial: 'MR' },
-    { name: 'Alex Lee', role: 'Student', action: 'Booked Highway Lesson', status: 'Scheduled', time: '3 hours ago', initial: 'AL' },
-    { name: 'Chris Davis', role: 'Student', action: 'Cancelled Lesson (Late)', status: 'Cancelled', time: 'Yesterday', initial: 'CD' },
+    // These could be fetched from a real audit log if implemented
+    { name: profile?.first_name + ' ' + profile?.last_name, role: 'Admin', action: 'Accessed Dashboard', status: 'Completed', time: 'Just now', initial: profile?.first_name?.[0] || 'A' },
   ];
 
   const alerts = [
-    { title: 'Maintenance Overdue', desc: 'Vehicle #12 requires immediate oil change and brake inspection.', type: 'error', icon: Car, action: 'Schedule Maintenance' },
-    { title: 'Pending Payments', desc: '5 students have overdue balances exceeding 7 days.', type: 'warning', icon: CreditCard, action: 'Review Accounts' },
-    { title: 'System Update', desc: 'Scheduled maintenance downtime tomorrow at 2:00 AM EST.', type: 'info', icon: Info },
+    { title: 'System Online', desc: 'All microservices are communicating correctly.', type: 'info', icon: Info },
   ];
 
   return (
     <div className="space-y-10">
+      <div className="mb-10">
+        <h2 className="text-3xl font-bold text-on-surface">Welcome back, {profile?.first_name || 'Admin'}</h2>
+        <p className="text-lg text-on-surface-variant font-medium mt-1">Platform Status: Healthy. Position: {profile?.position || 'Administrator'}</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((m, i) => (
           <motion.div
@@ -66,8 +99,8 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {activities.map((a) => (
-                  <tr key={a.name} className="hover:bg-surface-container-low/50 transition-colors">
+                {activities.map((a, i) => (
+                  <tr key={i} className="hover:bg-surface-container-low/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center text-xs font-bold ring-1 ring-white shadow-sm">
@@ -127,13 +160,6 @@ export default function AdminDashboard() {
                 <div>
                   <h4 className="text-sm font-bold leading-tight">{alert.title}</h4>
                   <p className="text-xs font-medium text-on-surface-variant mt-1 leading-relaxed">{alert.desc}</p>
-                  {alert.action && (
-                    <button className={`mt-2.5 text-[10px] font-bold uppercase tracking-widest hover:underline ${
-                      alert.type === 'error' ? 'text-error' : 'text-primary'
-                    }`}>
-                      {alert.action}
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
@@ -143,3 +169,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

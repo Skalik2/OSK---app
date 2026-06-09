@@ -18,10 +18,10 @@ router = APIRouter(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/auth/login")
 
 @router.post("/register_initial")
-async def register_instructor_auth(email: str, password: str):
+async def register_instructor_auth(user_data: schemas.UserCreateInitial):
     registration_data = {
-        "email": email,
-        "password": password,
+        "email": user_data.email,
+        "password": user_data.password,
         "role": "instructor"
     }
 
@@ -88,6 +88,29 @@ async def check_instructor_status(
         return {"in_between_phases": False, "message": "Instructor registration complete"}
 
     return {"in_between_phases": True, "message": "Auth created, instructor profile missing"}
+
+
+@router.get("/profile/me")
+async def get_my_instructor_profile(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    user_info = await tools.get_user(token)
+    user_id = UUID(user_info.get("id"))
+
+    profile = db.query(models.InProfiles).filter(models.InProfiles.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Instructor profile record not found.")
+
+    return {
+        "id": profile.id,
+        "user_id": profile.user_id,
+        "first_name": profile.first_name,
+        "last_name": profile.last_name,
+        "phone": profile.phone,
+        "license_number": profile.license_number,
+        "bio": profile.bio
+    }
 
 
 @router.get("/profile/{instructor_id}", response_model=schemas.InstructorProfileResponse)
