@@ -123,7 +123,7 @@ export default function ScheduleView() {
                   <div className="flex items-center gap-4 mt-1">
                     <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                       <User className="w-4 h-4 text-primary/60" />
-                      <span>Instruktor: {lesson.instructor?.first_name} {lesson.instructor?.last_name}</span>
+                      <span>Instructor: {lesson.instructor?.first_name} {lesson.instructor?.last_name}</span>
                     </div>
                     {lesson.instructor?.phone && (
                       <div className="flex items-center gap-2 text-sm text-on-surface-variant">

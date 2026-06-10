@@ -94,7 +94,7 @@ export default function Register() {
                 }
               `}
             >
-              {role === 'instructor' ? 'Instruktor' : 'Kursant'}
+              {role === 'instructor' ? 'Instructor' : 'Student'}
             </button>
           ))}
         </div>
