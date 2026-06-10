@@ -3,6 +3,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import httpx
 from uuid import UUID
+from sqlalchemy.orm import joinedload
+from typing import List
 
 from database import get_db
 import models, tools
@@ -133,7 +135,6 @@ async def update_admin_position(
     if not profile:
         raise HTTPException(status_code=404, detail="Admin profile data matching target id not found.")
 
-    # Mutate the corporate designation
     profile.position = position_data.position
     db.commit()
     db.refresh(profile)
@@ -147,3 +148,44 @@ async def update_admin_position(
         "position": profile.position,
         "created_at": profile.created_at
     }
+
+@router.get("/instructors", response_model=List[schemas.InstructorAdminResponse])
+async def get_all_instructors(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    await verify_only_admin(token)
+
+    return (
+        db.query(models.InProfiles)
+        .options(joinedload(models.InProfiles.user))
+        .all()
+    )
+
+
+@router.get("/courses", response_model=List[schemas.CourseAdminResponse])
+async def get_all_courses(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    await verify_only_admin(token)
+
+    return (
+        db.query(models.StCourses)
+        .options(joinedload(models.StCourses.student_profile))
+        .all()
+    )
+
+
+@router.get("/students", response_model=List[schemas.StudentAdminResponse])
+async def get_all_students(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    await verify_only_admin(token)
+
+    return (
+        db.query(models.StProfiles)
+        .options(joinedload(models.StProfiles.user))
+        .all()
+    )
