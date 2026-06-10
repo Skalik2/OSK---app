@@ -100,3 +100,105 @@ VALUES
     CURRENT_TIMESTAMP + INTERVAL '2 days' + INTERVAL '10 hours',
     'SCHEDULED'
 );
+
+WITH stu3 AS (
+    INSERT INTO auth.au_users (email, password_hash, role)
+    VALUES ('piotr.kaminski@poczta.pl', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'student')
+    RETURNING id
+), prof_stu3 AS (
+    INSERT INTO student.st_profiles (user_id, first_name, last_name, phone)
+    SELECT id, 'Piotr', 'Kamiński', '+48111222333' FROM stu3
+    RETURNING id
+)
+INSERT INTO student.st_courses (student_profile_id, category, required_hours, completed_hours, payment_status)
+SELECT id, 'B', 30, 30, 'PAID' FROM prof_stu3;
+
+WITH stu4 AS (
+    INSERT INTO auth.au_users (email, password_hash, role)
+    VALUES ('maria.zajac@poczta.pl', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'student')
+    RETURNING id
+), prof_stu4 AS (
+    INSERT INTO student.st_profiles (user_id, first_name, last_name, phone)
+    SELECT id, 'Maria', 'Zając', '+48222333444' FROM stu4
+    RETURNING id
+)
+INSERT INTO student.st_courses (student_profile_id, category, required_hours, completed_hours, payment_status)
+SELECT id, 'B', 30, 15, 'PAID' FROM prof_stu4;
+
+WITH stu5 AS (
+    INSERT INTO auth.au_users (email, password_hash, role)
+    VALUES ('jakub.krol@poczta.pl', '$argon2id$v=19$m=65536,t=3,p=4$4zyHEAKA0FrrHcP4H0OodQ$iCYk3OaSx8bcV2d9Kg5LU7e0HVOoG/8OjRYJu42QWj0', 'student')
+    RETURNING id
+), prof_stu5 AS (
+    INSERT INTO student.st_profiles (user_id, first_name, last_name, phone)
+    SELECT id, 'Jakub', 'Król', '+48333444555' FROM stu5
+    RETURNING id
+)
+INSERT INTO student.st_courses (student_profile_id, category, required_hours, completed_hours, payment_status)
+SELECT id, 'B', 30, 0, 'PAID' FROM prof_stu5;
+
+
+INSERT INTO calendar.ca_lessons (instructor_id, student_id, start_time, end_time, status)
+VALUES
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Kamiński' LIMIT 1),
+    '2026-06-10 08:00:00+02', '2026-06-10 10:00:00+02', 'COMPLETED'
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Zając' LIMIT 1),
+    '2026-06-10 10:30:00+02', '2026-06-10 12:30:00+02', 'COMPLETED'
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Król' LIMIT 1),
+    '2026-06-10 13:00:00+02', '2026-06-10 14:00:00+02', 'COMPLETED' -- Lekcja 1h
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Zieliński' LIMIT 1),
+    '2026-06-10 14:30:00+02', '2026-06-10 16:30:00+02', 'SCHEDULED'
+),
+
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Zając' LIMIT 1),
+    '2026-06-11 08:00:00+02', '2026-06-11 10:00:00+02', 'SCHEDULED'
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Zieliński' LIMIT 1),
+    '2026-06-11 10:30:00+02', '2026-06-11 12:00:00+02', 'SCHEDULED' -- Lekcja 1.5h
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Król' LIMIT 1),
+    '2026-06-11 12:30:00+02', '2026-06-11 14:30:00+02', 'SCHEDULED'
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Kamiński' LIMIT 1),
+    '2026-06-11 15:00:00+02', '2026-06-11 17:00:00+02', 'SCHEDULED'
+),
+
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Król' LIMIT 1),
+    '2026-06-12 09:00:00+02', '2026-06-12 11:00:00+02', 'SCHEDULED'
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Zając' LIMIT 1),
+    '2026-06-12 11:30:00+02', '2026-06-12 13:30:00+02', 'SCHEDULED'
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Zieliński' LIMIT 1),
+    '2026-06-12 14:00:00+02', '2026-06-12 15:00:00+02', 'SCHEDULED' -- Lekcja 1h
+),
+(
+    (SELECT id FROM instructor.in_profiles WHERE last_name = 'Nowak' LIMIT 1),
+    (SELECT id FROM student.st_profiles WHERE last_name = 'Kamiński' LIMIT 1),
+    '2026-06-12 15:30:00+02', '2026-06-12 17:30:00+02', 'SCHEDULED'
+);
