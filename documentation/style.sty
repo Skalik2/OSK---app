@@ -1,0 +1,283 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{weiiszablon}[2024/01/01 package <weiiszablon>]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[polish]{babel}
+\usepackage[utf8]{inputenc} 			% kodowanie 
+\usepackage[T1]{fontenc} 				% czcionka Timnes New Roman
+\usepackage[a4paper,twoside,left=2.5cm,right=2.5cm,top=2cm,bottom=2.5cm,includefoot=false,includehead=false,footskip=1.16cm]{geometry}
+\usepackage{courier} 					% czcionka courier
+\usepackage{mathptmx} 					% pakiet wymagany do czcionki Times New Roman
+\usepackage{graphicx} 					% pakiet graficzny
+\usepackage{enumitem} 					% spis treści i listy
+\usepackage{etoolbox} 					% pakiet umożliwiający edycję domyślnych komend
+\usepackage{amsmath} 					% pakiet matematyczny
+\usepackage{color} 						% podstawowe kolory
+\usepackage{hyperref} 				    % aktywne linki
+\usepackage[final]{listingsutf8}        % styl dla formatowania kodów źródłowych
+\usepackage{tikz}
+\usepackage{bm}							% dla pogrubionych i pochylonych czcionek w środowisku matematycznym
+
+\usepackage{url}
+\usepackage{booktabs}                   % do tworzenia ładnych tabel
+
+\usepackage{caption}
+\usepackage{lmodern}
+
+% kropki po numeracji rozdziałów w spisie treści
+\usepackage{tocloft} 	
+\usepackage{chngcntr}				
+\usepackage[hyphens]{xurl}
+% \def\UrlBreaks{\do\/\do-}
+% \usepackage[unicode=true,naturalnames,psdextra]{hyperref}
+
+\renewcommand{\cftsecaftersnum}{.}
+\renewcommand{\cftsubsecaftersnum}{.}
+\renewcommand{\cftsubsubsecaftersnum}{.}
+\newcommand{\komentarz}[1]{}
+% zmiana odległości przed rozdziałami
+\makeatletter 
+\newskip\old@cftbeforesecskip
+\old@cftbeforesecskip\cftbeforesecskip
+\let\old@l@section\l@section
+\def\l@section#1#2{\old@l@section{#1}{#2}\cftbeforesecskip0pt}
+\makeatother
+
+% zmiana domyślnego formatowania tytułów w spisie treści
+%\renewcommand{\cftsecfont}{} 
+%\renewcommand\cftsecpagefont{\normalfont}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+\linespread{1.5} % interlinia 1.5				
+
+
+\lstset{ 
+  backgroundcolor=\color{white},
+  basicstyle=\linespread{0.85}\footnotesize\ttfamily,        
+  breakatwhitespace=false,         
+  breaklines=true,                
+  captionpos=t,                   
+  commentstyle=\color{mygreen},
+  columns=flexible,
+  extendedchars=true,
+  firstnumber=1,
+  frame=single,
+  keepspaces=true,
+  keywordstyle=\color{blue},
+  numbers=left,
+  numbersep=5pt,
+  numberstyle=\tiny\color{mygray},
+  rulecolor=\color{black},
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  stepnumber=1,
+  stringstyle=\color{mymauve}, 
+  tabsize=2	                
+  }
+
+% rozmiar czcionki numeru strony
+\renewcommand*{\thepage}{\footnotesize\arabic{page}}
+
+%parametry dla kodów źródłowych
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+
+%%%%%%%% odsuniecie wypunktowania
+\setlist[enumerate,1]{label=\arabic*),leftmargin=1.25cm,itemsep=0pt,topsep=0pt}
+\setlist[itemize,1]{label={--},labelsep=0.4cm,leftmargin=1.25cm,itemsep=0pt,topsep=0pt}
+\setlist[itemize,2]{label={--},labelsep=0.4cm,leftmargin=0.6cm,itemsep=0pt,topsep=0pt}
+\setlist{noitemsep}
+\setlist{topsep=0pt}
+
+% do sztucznego zwiekszenia poziomu zaglebienia srodowiska itemize
+% / do przejscia na poziom 2
+\makeatletter
+\newcommand{\advanceitemizelevel}{\advance\@itemdepth\@ne}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\setlength\parindent{1.25cm}		% wcięcie 1.25 cm
+\newlength\mylen
+\setlength\mylen{\parindent}
+
+
+\definecolor{niebieski}{RGB}{0,130,150} %kolor niebieski
+\definecolor{mygray}{gray}{0.6} 		% kolor szary
+
+
+\usepackage[compact]{titlesec} 
+%zmiana czcionki i odstępów w tytułach rozdziałów
+
+\titleformat{\section}
+  {\normalfont\fontsize{16pt}{16pt}\bfseries}
+  {\makebox[\mylen][l]{\thesection.}}
+  {0pt}
+  {}
+
+\titleformat{\subsection}
+  {\normalfont\fontsize{14pt}{14pt}\bfseries}
+  {\makebox[\mylen][l]{\thesubsection.}}
+  {0pt}
+  {}
+
+\titleformat{\subsubsection}
+  {\normalfont\fontsize{12pt}{12pt}\bfseries}
+  {\makebox[\mylen][l]{\thesubsubsection.}}
+  {0pt}
+  {}
+
+\titlespacing*{\section}{0pt}{*0}{14pt} %zmiana odstępów po tytułach rozdziałów
+\titlespacing*{\subsection}{0pt}{14pt}{12pt}
+\titlespacing*{\subsubsection}{0pt}{12pt}{0pt}
+
+
+% komenda dla pustej strony
+\newcommand\blankpage{ 
+	\null
+	\thispagestyle{empty}
+	\newpage}
+
+\addto\captionspolish{\renewcommand{\figurename}{Rys.}} %zmiana domyślnego podpisu dla rysunku
+
+\renewcommand{\thetable}{\arabic{section}.\arabic{table}} %zmiana domyślnej numeracji
+\renewcommand{\thefigure}{\arabic{section}.\arabic{figure}}
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+
+\AtBeginEnvironment{figure}{}\AtEndEnvironment{figure}{\addvspace{12pt}} % dodatkowe odstępy przed tabelami i rysunkami
+\AtBeginEnvironment{table}{\small}\AtEndEnvironment{table}{\normalsize\vspace{12pt}}%
+\AtBeginEnvironment{tabular}{\fontsize{10}{9}\selectfont}%
+\AtBeginDocument{\counterwithin{lstlisting}{section}\counterwithin{figure}{section}\counterwithin{table}{section}\counterwithin{equation}{section}}
+
+
+\DeclareCaptionLabelFormat{cfscr}{#1 #2}
+\DeclareCaptionFont{ftscr}{\fontsize{9}{11pt}\selectfont}
+\DeclareCaptionLabelSeparator{labscr}{. }
+\captionsetup[table]{labelformat=cfscr,labelfont=ftscr,labelseparator=labscr,textfont=ftscr,position=top,skip=3pt}
+\captionsetup[figure]{labelformat=cfscr,labelfont=ftscr,labelseparator=labscr,textfont=ftscr,position=bottom,skip=3pt}
+\captionsetup[lstlisting]{labelformat=cfscr,labelfont=ftscr,labelseparator=labscr,textfont=ftscr,position=bottom,skip=3pt}
+
+%na potrzeby pionowego symbolu mikro 
+\usepackage{scalerel}
+\newsavebox{\fooboxMU}
+\newcommand{\slantbox}[2][0]{\colorlet{slantcolor}{.}\mbox{%
+        \sbox{\fooboxMU}{\color{slantcolor}#2}%
+        \hskip\wd\fooboxMU%
+        \pdfsave%
+        \pdfsetmatrix{1 0 #1 1}%
+        \llap{\usebox{\fooboxMU}}%
+        \pdfrestore%
+}}
+\newcommand\unslant[2][-.2]{%
+  \mkern1mu%
+  \ThisStyle{\slantbox[#1]{$\SavedStyle#2$}}%
+  \mkern-1mu%
+}
+
+
+% NormalTeXSyntaxOff 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % % 10-cio linijkowy abstract
+\usepackage{fancybox,environ}
+
+\NewEnviron{fixedSizeBox}
+  {\def\trysize{12pt}\def\tryblskip{12.5pt}%
+   \retry}
+\makeatletter
+\def\retry{%
+  \ifdim\trysize<5.5pt
+    \WARNING\expandafter\@gobble
+  \else
+    \expandafter\@firstofone
+  \fi
+  {\edef\trysize{\the\dimexpr\trysize-0.5pt\relax}%
+   \edef\tryblskip{\the\dimexpr\tryblskip-0.5pt\relax}%
+   \sbox0{\begin{minipage}{.965\textwidth}
+   \setlength{\parindent}{1em}\noindent
+   \begingroup\edef\x{\endgroup
+     \noexpand\fontsize{\trysize}{\tryblskip}\noexpand\selectfont}\x
+   \BODY\end{minipage}}%
+  }%
+  \dimen0=\dimexpr\ht0+\dp0\relax
+  \ifdim\dimen0>.3\textwidth
+    \expandafter\retry
+  \else
+    \expandafter\outputoval
+  \fi}
+\makeatletter
+
+\def\WARNING{\sbox{0}{WARNING}}
+
+\def\outputoval{\mbox{\begin{minipage}[l][.27\textwidth]{1\textwidth}  
+\usebox{0}\end{minipage}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\renewcommand\author[1]{\renewcommand\@author{#1}}
+\renewcommand\@author{\@latex@error{No \noexpand\author given}\@ehc}
+
+\newcommand\supervisor[1]{\renewcommand\@supervisor{#1}}
+\newcommand\@supervisor{\@latex@error{No \noexpand\supervisor given}\@ehc}
+
+\usepackage[all]{nowidow}
+
+\newcommand{\kod}[1]{\texttt{#1}}
+
+\usepackage{titlesec}
+
+% Konfiguracja odstępów dla \section
+% \titlespacing*{komenda}{odstęp-z-lewej}{odstęp-przed}{odstęp-po}
+\titlespacing*{\section}
+  {0pt}                   % brak wcięcia z lewej
+  {3.5ex plus 1ex minus .2ex} % powiększony odstęp przed rozdziałem (wartość elastyczna)
+  {2.3ex plus .2ex}       % domyślny/stabilny odstęp po rozdziale
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% strona tytułowa pracy
+\renewcommand{\maketitle}{
+\begin{titlepage}
+\begin{center}
+\vskip5cm
+\includegraphics[width=12.5cm]{figures/logoweii.jpg}
+\\[5cm]
+{\textbf{\Large \@author}}
+\\[.5cm]
+{\Large \@title}
+\\[4cm]
+\end{center}
+~\\
+\begin{center}
+{\Large}
+{\Large \@supervisor}
+\end{center}
+~\\[0.5cm]
+\begin{center}
+{\Large Rzeszów, \the\year}
+\end{center}
+\end{titlepage}
+}
+
+
+\lstset{
+  literate={ą}{{\k{a}}}1
+           {ć}{{\'c}}1
+           {ę}{{\k{e}}}1
+           {ł}{{\l{}}}1
+           {ń}{{\'n}}1
+           {ó}{{\'o}}1
+           {ś}{{\'s}}1
+           {ź}{{\'z}}1
+           {ż}{{\.z}}1
+           {Ą}{{\k{A}}}1
+           {Ć}{{\'C}}1
+           {Ę}{{\k{E}}}1
+           {Ł}{{\L{}}}1
+           {Ń}{{\'N}}1
+           {Ó}{{\'O}}1
+           {Ś}{{\'S}}1
+           {Ź}{{\'Z}}1
+           {Ż}{{\.Z}}1
+}

@@ -25,9 +25,14 @@ state = {
 }
 
 def test_01_proxy_register_instructor():
+    register_payload = {
+        "email": instructor_email,
+        "password": test_password,
+        "role": "instructor"
+    }
     response = httpx.post(
         f"{CORE_URL}/instructor/register_initial",
-        params={"email": instructor_email, "password": test_password}
+        json=register_payload
     )
     assert response.status_code in [200, 201], f"Registration failed: {response.text}"
     data = response.json()
@@ -92,9 +97,14 @@ def test_06_get_instructor_profile_by_user_id():
 
 
 def test_07_proxy_register_student():
+    register_payload = {
+        "email": student_email,
+        "password": test_password,
+        "role": "student"
+    }
     response = httpx.post(
         f"{CORE_URL}/student/register_initial",
-        params={"email": student_email, "password": test_password}
+        json=register_payload
     )
     assert response.status_code in [200, 201], f"Registration failed: {response.text}"
     data = response.json()

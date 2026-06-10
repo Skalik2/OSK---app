@@ -1,0 +1,374 @@
+\documentclass[12pt,twoside]{article}
+\usepackage{style}
+
+\title{Aplikacja dla ośrodków szkolenia kierowców \\ -- \\ \url{https://github.com/Skalik2/OSK---app}}
+\supervisor{\textbf{Autorzy:} \\ Jakub Portas, Szymon Jabłoński, Mateusz Skali \\ W Gorącej Wodzie Co.}
+\author{Bezpieczeństwo aplikacji Webowych}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+
+\section{Wprowadzenie}
+Głównym celem niniejszego projektu było zaplanowanie, zaprojektowanie i wstępne wdrożenie aplikacji webowej do zarządzania ośrodkami szkolenia kierowców, opierającej się na architekturze Frontend, Backend na bazie mikroserwisów, bazie danych RDBMS oraz integracji z zewnętrznym API. Ważnym elementem projektu była analiza tworzonej aplikacji pod kątem bezpieczeństwa i niezawodności (security oraz safety). W tym raporcie przedstawiono szczegóły dotyczące architektury i założeń aplikacji, jej implementacji oraz scenariusza wdrożenia.
+
+
+\section{Definition and design}
+Niniejszy rozdział przedstawia szczegóły dotyczące założeń projektowych aplikacji -- architektury, przypadków użycia, modeli danych i potencjalnych zagrożeń.
+
+\subsection{Architektura systemu}
+Rysunek \ref{fig:arch} przedstawia schemat architektury rozwiązania z uwzględnieniem podziału na komponenty oraz wykorzystane technologie. System został zaprojektowany w oparciu o architekturę usługową, co zapewnia skalowalność, przejrzystość kodu oraz separację odpowiedzialności. Przepływ danych w aplikacji realizowany jest poprzez następujące warstwy:
+
+\begin{itemize}
+    \item \textbf{Warstwa prezentacji:} Zaimplementowana przy użyciu biblioteki \textbf{React}. Odpowiada za interakcję z użytkownikiem oraz renderowanie interfejsu graficznego. Warstwa jest oddzielona od logiki biznesowej i komunikuje się z serwerem za pomocą żądań HTTP.
+    \item \textbf{Serwer aplikacji:} Oparty na frameworku \textbf{FastAPI} (Python). Pełni rolę punktu komunikacyjnego. Jego zadaniem jest odbieranie zapytań z frontendu, walidacja danych wejściowych, komunikacja z bazą danych oraz zarządzanie ruchem do pozostałych usług.
+    \item \textbf{Mikroserwisy wewnętrzne:} System wydziela funkcjonalności do niezależnych serwisów. Głównym z nich jest serwis aplikacyjny odpowiadający za całą logikę biznesową aplikacji. Drugim z elementów jest \textbf{aikroserwis autoryzacji (auth\_service)}, który zarządza procesem logowania, wydawaniem tokenów sesyjnych oraz kontrolą dostępu na podstawie ról.
+    \item \textbf{System zarządzania bazą danych RDBMS:} Jako system bazodanowy wykorzystano \textbf{PostgreSQL}. Przechowuje on ustrukturyzowane informacje. Dostęp do bazy jest ściśle izolowany - komunikuje się z backendowem, co chroni dane przed bezpośrednim atakiem z zewnątrz.
+    \item \textbf{Integracja z Zewnętrznym API (Open-meteo):} Aplikacja pobiera dodatkowe dane (informacje pogodowe, istotne w kontekście planowania jazd) z zewnętrznej usługi chmurowej. Ze względów bezpieczeństwa, zapytania do API są realizowane z poziomu backendu.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/architecture.png}
+    \caption{Schemat architektury systemu}
+    \label{fig:arch}
+\end{figure}
+
+\subsection{Kontrola dostępu (RBAC) - Przypadki użycia}
+W systemie zaimplementowano kontrolę dostępu opartą na rolach (ang. Role-Based Access Control). Zdefiniowano cztery główne role: użytkownik niezalogowany, kursant, instruktor oraz administrator. Rysunek \ref{fig:use_cases} przedstawia diagram przypadków użycia, który obrazuje podział uprawnień oraz powiązania między poszczególnymi aktorami a funkcjonalnościami systemu. Szczegółowy podział odpowiedzialności w ramach zaimplementowanego modelu RBAC prezentuje się następująco:
+\begin{itemize}
+    \item \textbf{Użytkownik niezalogowany:} Posiada dostęp wyłącznie do operacji wstępnych: rejestracji nowego konta oraz logowania.
+    \item \textbf{Kursant:} Ma możliwość podglądu własnego harmonogramu zaplanowanych lekcji oraz bieżących postępów w kursie.
+    \item \textbf{Instruktor:} Posiada uprawnienia operacyjne w ramach przypisanych mu kursantów. Odpowiada za zarządzanie kalendarzem, uzupełnianie liczby godzin wyjeżdżonych przez kursantów oraz modyfikację swoich specjalizacji.
+    \item \textbf{Administrator:} Dziedziczy wszystkie możliwości instruktora, rozszerzając je o uprawnienia globalne oraz destrukcyjne. Do jego zadań należy zarządzanie uprawnieniami (tworzenie nowych kont administracyjnych, modyfikacja rólh) oraz możliwość usuwania kursów w przypadku błędów.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/use_cases.png}
+    \caption{Diagram przypadków użycia z uwzględnieniem ról}
+    \label{fig:use_cases}
+\end{figure}
+
+\subsection{Model danych}
+Do przechowywania danych wykorzystano relacyjną bazę danych składającą się z tabel podzielonych na pięć modułów: autentykacji, kursanta, instruktora, kalendarza oraz administratora. Na rysunku \ref{fig:erd} przedstawiono diagram związków encji bazy danych. Poniżej przedstawiono charakterystykę poszczególnych tabel oraz zakres przechowywanych w nich danych:
+
+\begin{itemize}
+    \item \textbf{auth.au\_users:} Główna tabela odpowiedzialna za autentykację i kontrolę dostępu (RBAC). Przechowuje unikalne adresy e-mail, skróty haseł oraz przypisane role użytkowników (\texttt{KURSANT}, \texttt{INSTRUKTOR}, \texttt{ADMIN}).
+    \item \textbf{student.st\_profiles:} Zawiera podstawowe dane osobowe kursantów, takie jak imię, nazwisko i numer telefonu. Jest powiązana relacją jeden do jednego z kontem użytkownika w module autentykacji.
+    \item \textbf{student.st\_courses:} Odpowiada za śledzenie postępów szkoleniowych. Przechowuje informacje o wybranej kategorii prawa jazdy (AM, B, C), liczbie wymaganych i wyjeżdżonych godzin oraz statusie płatności za kurs.
+    \item \textbf{instructor.in\_profiles:} Przechowuje szczegółowe dane profilowe instruktorów, w tym imię, nazwisko, telefon, numer posiadanej licencji oraz opcjonalny biogram.
+    \item \textbf{instructor.in\_specialties:} Tabela pomocnicza określająca specjalizacje instruktorów, czyli kategorie prawa jazdy, w ramach których dany instruktor ma uprawnienia do prowadzenia szkoleń.
+    \item \textbf{calendar.ca\_lessons:} Odzwierciedla harmonogram zaplanowanych jazd. Łączy profile instruktorów i kursantów, przechowując informacje o czasie rozpoczęcia i zakończenia lekcji oraz jej bieżącym statusie (np. \texttt{SCHEDULED}).
+    \item \textbf{admin.ad\_profiles:} Zawiera profile osób zarządzających systemem, przechowując ich imię, nazwisko oraz zajmowane w strukturze organizacji stanowisko.
+\end{itemize}
+
+\clearpage
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/erd.png}
+    \caption{Diagram związków encji (ERD)}
+    \label{fig:erd}
+\end{figure}
+
+\subsection{Potencjalne zagrożenia}
+Na etapie projektowania zidentyfikowano następujące potencjalne zagrożenia dla bezpieczeństwa aplikacji, opierając się na aktualnej klasyfikacji OWASP Top 10 \cite{OWASP}:
+
+\begin{itemize}
+    \item \textbf{Naruszenie kontroli dostępu (Broken Access Control -- OWASP A01:2025):} Z uwagi na złożoną strukturę ról (Kursant, Instruktor, Administrator), zagrożeniem jest pozioma i pionowa eskalacja uprawnień. Brak rygorystycznej weryfikacji roli na każdym punkcie końcowym backendu mógłby pozwolić np. kursantowi na samodzielną modyfikację wyjeżdżonych godzin lub instruktorowi na nieuprawnione usunięcie kursu, co jest wyłącznym prawem administratora.
+    \item \textbf{Błędy uwierzytelniania (Authentication Failures -- OWASP A07:2025):} Zagrożenie może pojawić się w przypadku braku mechanizmów obronnych w protokole uwierzytelniania. W przypadku braku zabezpieczenia ograniczania liczby żądań na punktach wejścia do aplikacji, system będzie podatny na ataki automatyczne (np. \textit{brute-force} lub \textit{credential stuffing}). Ponadto, zagrożenie stanowią potencjalne błędy w cyklu życia sesji użytkownika. Brak bezpiecznego unieważniania sesji po stronie serwera oraz brak rozróżnienia między krótkotrwałym tokenem dostępowym a długotrwałym tokenem odświeżającym, co w fazie operacyjnej drastycznie zwiększa ryzyko związane z przejęciem aktywnego tokenu.
+    \item \textbf{Wstrzykiwanie danych (Injection -- OWASP A05:2021) oraz XSS:} Zagrożenie może pojawić się w sytuacji, gdy architektura systemu dopuszczałaby przekazywanie niefiltrowanych danych pochodzących od użytkownika bezpośrednio do interpreterów poleceń lub silników bazodanowych. Brak walidacji i parametryzacji zapytań na poziomie komunikacji z bazą danych mogłoby stworzyć ryzyko wykonania złośliwego kodu (np. \textit{SQL Injection}). Brak neutralizacji kodu wykonywalnego w warstwie prezentacji może skutkować wstrzyknięciem złośliwych skryptów wykonywanych po stronie klienta (ataki typu \textit{Cross-Site Scripting -- XSS}).
+\end{itemize}
+
+\clearpage
+
+\section{Software supply chain failures}
+
+\subsection{Zestawienie wykorzystanych technologii}
+W tabeli \ref{tab:tech_stack} przedstawiono wykaz narzędzi i frameworków użytych w projekcie wraz z ich wersjami.
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|l|l|p{7cm}|}
+    \hline
+    \textbf{Narzędzie / Framework} & \textbf{Wersja} & \textbf{Krótki opis zastosowania} \\ \hline
+    Node.js & 24.x & Środowisko uruchomieniowe niezbędne do działania narzędzi frontendowych oraz procesu budowania aplikacji. \\ \hline
+    TypeScript & 5.8.2 & Język dodający statyczne typowanie do JavaScriptu. \\ \hline
+    React & 19.0.1 & Główna biblioteka wykorzystana do budowy interfejsu użytkownika - Frontend. \\ \hline
+    react-router-dom & 7.15.0 & Biblioteka zarządzająca routingiem po stronie przeglądarki w architekturze Single Page Application. \\ \hline
+    Vite & 6.2.3 & Narzędzie używane do budowania oraz serwowania warstwy frontendowej. \\ \hline
+    Tailwind CSS & 4.1.14 & Framework CSS użyty do zarządzania warstwą wizualną aplikacji. \\ \hline
+    Axios & 1.17.0 & Klient HTTP wykorzystywany we frontendzie do asynchronicznej i bezpiecznej komunikacji z backendem. \\ \hline
+    Vitest & 4.1.8 & Framework do testów automatycznych na frontendzie. \\ \hline
+    FastAPI & 0.136.1 & Framework Pythona do budowy logiki biznesowej i wystawiania punktów końcowych REST API. \\ \hline
+    Uvicorn & 0.28.0 & Serwer ASGI używany do uruchamiania aplikacji FastAPI, zapewniający wydajność obsługi żądań sieciowych. \\ \hline
+    Pydantic & 2.13.4 & Biblioteka do walidacji i parsowania danych wejściowych w backendzie. \\ \hline
+    PostgreSQL & 15.18 & Relacyjna baza danych przechowująca ustrukturyzowane informacje. \\ \hline
+    SQLAlchemy & 2.0.49 & Biblioteka ORM zapewniająca wyższy poziom abstrakcji oraz automatyczną ochronę przed atakami typu SQL Injection. \\ \hline
+    psycopg & 3.1.18 & Adapter bazy danych PostgreSQL dla języka Python, realizujący fizyczne połączenie z bazą. \\ \hline
+    passlib / python-jose & 1.7.4 / 3.3.0 & Narzędzia kryptograficzne służące do bezpiecznego hashowania haseł oraz zarządzania tokenami JWT. \\ \hline
+    python-multipart & 0.0.9 & Pakiet do obsługi danych z formularzy, potrzebny przy standardowym logowaniu OAuth2 w systemie. \\ \hline
+    pytest & 8.0.0 & Framework do wykonywania testów niezawodności i stabilność systemu na backendzie. \\ \hline
+    httpx & 0.28.1 & Asynchroniczny klient HTTP wykorzystywany na backendzie do komunikacji z wewnętrznymi i zewnętrznymi usługami. \\ \hline
+    \end{tabular}
+    \caption{Zestawienie wykorzystanych technologii i bibliotek}
+    \label{tab:tech_stack}
+\end{table}
+
+\subsection{Analiza historycznych podatności}
+Mając na uwadze bezpieczeństwo (Security) oraz niezawodność (Safety), przeanalizowano luki występujące w poprzednich wersjach użytych narzędzi, aby udowodnić odporność obecnego stosu technologicznego:
+
+\begin{enumerate}
+    \item \textbf{Podatność 1} (React w wersjach  19.0.0, 19.1.0, 19.1.1, and 19.2.0): Identyfikator \texttt{CVE-2025-55182} (tzw. React2Shell, oznaczona jako krytyczna, CVSS 10.0). Luka polegała na niebezpiecznej deserializacji danych w architekturze React Server Components (RSC), co pozwalało atakującym na zdalne wykonanie dowolnego kodu (RCE) na serwerze za pomocą jednego spreparowanego żądania HTTP. Wybrana wersja (\textbf{19.0.1}) łata ten problem, wprowadzając bezpieczniejsze parsowanie i zamykając tę drogę ataku \cite{react-vuln}.
+    \item \textbf{Podatność 2} (FastAPI w wersjach poniżej 0.65.2): Identyfikator \texttt{CVE-2021-32677}. Podatność związana z wadliwym mechanizmem uwierzytelniania. W starszych wersjach frameworka endpointy opierające autoryzację na ciasteczkach, które jednocześnie przyjmowały ładunek payload w formacie JSON, mogły zostać oszukane przez atakującego, pozwalając na całkowite ominięcie autoryzacji. Wersja 0.136.1 zawiera w pełni naprawioną logikę weryfikacji \cite{fastapi-vuln}.
+    \item \textbf{Podatność 3} (PostgreSQL w wersjach poniżej 18.4, 17.10, 16.14, \textbf{15.18 (wybrana w projekcie)}, 14.23): Identyfikator \texttt{CVE-2026-6472}. Poważny błąd walidacji uprawnień (CVSS 8.8) związany z poleceniem \texttt{CREATE TYPE}. Brak odpowiedniej autoryzacji pozwalał twórcy obiektu na przejęcie innych zapytań wykorzystujących zmienną \texttt{search\_path}, co w efekcie umożliwiało wykonanie złośliwego kodu SQL (Arbitrary SQL Execution). Wdrażana w tym projekcie zaktualizowana wersja 15.18 eliminuje ten wektor ataku poprzez rygorystyczne sprawdzanie uprawnień (CREATE privilege) \cite{postgres-vuln}.
+\end{enumerate}
+
+\clearpage
+
+\section{Implementacja aplikacji}
+W niniejszym rozdziale omówiono wybrane elementy zaimplementowanego systemu pod kątem bezpieczeństwa oraz niezawodności. Zidentyfikowano wdrożone mechanizmy ochrony, a także wskazano braki oraz przypadki niebezpiecznych implementacji lub nieodpowiedniej obsługi błędów, które wymagają poprawy w przyszłości.
+
+\subsection{Autentykacja, zarządzanie hasłami i RBAC}
+W systemie zaimplementowano mechanizm logowania i rejestracji oparty na tokenach JWT. W celu ochrony haseł użytkowników przed wyciekiem zastosowano algorytm haszujący \texttt{Argon2}. Dodatkowo system wymusza kontrolę dostępu opartą na rolach (RBAC).
+
+\begin{lstlisting}[language=Python, caption={Fragment weryfikacji logowania w \texttt{auth\_service/router.py}}]
+if not user or not utils.verify_password(user_credentials.password, user.password_hash):
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect credentials."
+    )
+\end{lstlisting}
+
+\textbf{Aspekty bezpieczeństwa i niezawodności:}
+\begin{itemize}
+    \item \textbf{Zrealizowano (Security):} Użycie ujednoliconego komunikatu o błędzie (Incorrect credentials) bez względu na to, czy nie istnieje użytkownik, czy podano złe hasło, zapobiega atakom typu \textit{User Enumeration} (odgadywanie istniejących adresów email). Ponadto tokeny JWT mają ustawiony krótki czas wygasania (30 minut).
+    \item \textbf{Braki i ulepszenia:} W systemie brakuje zabezpieczenia przed atakami typu \textit{brute-force} (brak mechanizmu \textit{Rate Limiting}). Nie ma również obsługi unieważniania tokenów przed czasem (np. czarnej listy tokenów przy wylogowaniu).
+\end{itemize}
+
+\subsection{Autoryzacja i ochrona zasobów}
+Zaimplementowano weryfikację uprawnień na poziomie dostępu do konkretnych zasobów (\textit{Horizontal Authorization}). Listing \ref{lst:auth-rbac} prezentuje przykładowe ograniczenie dostępu do lekcji w module kalendarza – system upewnia się, że instruktor może odczytywać wyłącznie własne zaplanowane jazdy.
+
+\begin{lstlisting}[language=Python, caption={Weryfikacja uprawnień instruktora w żądaniu HTTP}, label={lst:auth-rbac}]
+if user_role == "instructor":
+    caller_profile = db.query(models.InProfiles).filter(models.InProfiles.user_id == user_id).first()
+    if not caller_profile or caller_profile.id != instructor_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to owner, instructor or platform administrator."
+        )
+\end{lstlisting}
+
+\textbf{Aspekty bezpieczeństwa i niezawodności:}
+\begin{itemize}
+    \item \textbf{Zrealizowano (Security):} Skutecznie zabezpieczono system przed krytycznymi atakami typu IDOR (\textit{Insecure Direct Object Reference}). Atakujący, będący zalogowanym instruktorem, nie jest w stanie odczytać kalendarza innego instruktora przez zmianę parametru \texttt{instructor\_profile\_id} w żądaniu. System poprawnie rzuca wyjątek z kodem 403 Forbidden.
+    \item \textbf{Braki i ulepszenia:} Logika autoryzacyjna zawiera tzw. \textit{hardcoding} ról (sztywne porównanie \texttt{user\_role == "instructor"}). Wraz ze wzrostem złożoności systemu i dodawaniem nowych ról, zarządzanie takimi instrukcjami warunkowymi będzie podatne na błędy. Można to wydzielić do reużywalnych, zewnętrznych zależności polityk dostępu.
+\end{itemize}
+
+\subsection{Komunikacja między mikroserwisami i weryfikacja tokenów}
+Architektura aplikacji wymaga komunikacji między głównym backendem a mikroserwisem autoryzacji. Pobieranie danych o zalogowanym użytkowniku oparto o standard \texttt{OAuth2PasswordBearer} oraz klienta \texttt{httpx}. Przykład komunikacji przedstawiono w listingu \ref{lst:auth-com}.
+
+\begin{lstlisting}[language=Python, caption={Asynchroniczna komunikacja i obsługa błędów mikroserwisu Auth}, label=lst:auth-com]
+async def get_user_from_auth(token: str):
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                "http://localhost:8001/auth/verify",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service is currently unavailable."
+            )
+\end{lstlisting}
+
+\textbf{Aspekty bezpieczeństwa i niezawodności:}
+\begin{itemize}
+    \item \textbf{Zrealizowano (Security):} System bezpiecznie hermetyzuje token sesyjny, wstrzykując go do nagłówka żądania (\texttt{Authorization: Bearer}). W przypadku braku autoryzacji aplikacja rzuca wyjątek z kodem 401 Unauthorized.
+    \item \textbf{Zrealizowano (Safety):} Pomyślano o awarii infrastruktury. Jeśli mikroserwis autentykacji ulegnie awarii i przestanie nasłuchiwać, główny backend nie zamyka się z krytycznym błędem 500, lecz przechwytuje \texttt{httpx.RequestError} i informuje o niedostępności usługi (503 Service Unavailable).
+    \item \textbf{Braki i ulepszenia (Safety):} Wywołanie sieciowe nie posiada zdefiniowanego limitu czasu oczekiwania (\texttt{timeout}). Jeśli usługa Auth będzie utrzymywać otwarte połączenia ale nie zwracać odpowiedzi, wszystkie zapytania do głównego backendu zaczną blokować wątki. Może to doprowadzić do zamrożenia głównej aplikacji. Zabezpieczyć można to, dodając parametr \texttt{timeout=5.0} do klienta. Dodatkowo adres URL (\texttt{localhost:8001}) nie powinien znajdować się bezpośrednio w kodzie, lecz być pobierany ze zmiennej środowiskowej.
+\end{itemize}
+
+\subsection{Integracja z zewnętrznym API pogodowym}
+Aplikacja pobiera dane pogodowe z zewnętrznego serwisu Open-Meteo. Zaprojektowano podstawową obsługę błędów sieciowych za pomocą bloku \texttt{try-except}. Listing \ref{lst:outside-api} przedstawia obsługę połączenia z zewnętrznym API.
+
+\begin{lstlisting}[language=Python, caption={Obsługa połączenia z zewnętrznym API w \texttt{weather\_service.py}}, label=lst:outside-api]
+try:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(OPEN_METEO_URL, params=params)
+        response.raise_for_status()
+        # (...) parsowanie danych
+except httpx.HTTPError:
+    return None
+\end{lstlisting}
+
+\textbf{Aspekty bezpieczeństwa i niezawodności:}
+\begin{itemize}
+    \item \textbf{Zrealizowano (Safety):} W przypadku awarii zewnętrznego API lub błędu HTTP (np. 500, 404), aplikacja łapie wyjątek \texttt{httpx.HTTPError} i zwraca wartość \texttt{None}.
+    \item \textbf{Braki i ulepszenia:} Zaimplementowana obsługa wyjątków może być niewystarczająca. W kliencie HTTP \textbf{nie zdefiniowano limitu czasu (timeout)}. Jeśli zewnętrzne API przestanie odpowiadać i połączenie będzie „wisieć”, serwer może wyczerpać dostępne wątki i sam przestanie odpowiadać użytkownikom. Należy wprowadzić \texttt{timeout} oraz mechanizm \textit{Circuit Breaker}.
+\end{itemize}
+
+\subsection{Warstwa bazy danych (Security \& Safety)}
+Aplikacja łączy się z systemem PostgreSQL z wykorzystaniem narzędzia ORM (SQLAlchemy). 
+
+\begin{lstlisting}[language=Python, caption={Inicjalizacja i zamykanie sesji w \texttt{database.py}}]
+SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://root:rootpassword@localhost:5432/osk_default"
+# (...)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+\end{lstlisting}
+
+\textbf{Aspekty bezpieczeństwa i niezawodności:}
+\begin{itemize}
+    \item \textbf{Zrealizowano (Security \& Safety):} Użycie ORM uodparnia system na najpopularniejsze ataki \textit{SQL Injection}. Blok \texttt{finally: db.close()} gwarantuje, że połączenia z bazą są zwalniane do puli nawet w przypadku wystąpienia błędu w aplikacji (zapobiega wyciekom pamięci/połączeń).
+    \item \textbf{Braki i ulepszenia (Security):} Poważną luką bezpieczeństwa jest trzymanie danych logowania (root:rootpassword) bezpośrednio w kodzie źródłowym (tzw. \textit{hardcoding}). Parametry te powinny być wstrzykiwane bezpiecznie przez zmienne środowiskowe (.env).
+    \item \textbf{Braki i ulepszenia (Safety):} system nie jest przygotowany na awarię głównej bazy danych. Brak nawiązania połączenia spowoduje natychmiastowe wyrzucenie błędu krytycznego (np. \textit{OperationalError}) bezpośrednio do użytkownika. Brakuje mechanizmu ponawiania prób połączenia (ang. \textit{retry}) oraz odpowiedniego opakowania błędów bazy w wyjątki HTTP (np. 503 Service Unavailable).
+\end{itemize}
+
+
+\subsection{Implementacja testów automatycznych}
+W celu weryfikacji mechanizmów aplikacji, system został pokryty zestawem zautomatyzowanych testów przygotowanych przy użyciu frameworku \texttt{pytest} oraz asynchronicznego klienta \texttt{httpx}. Scenariusze testowe podzielono na dwa obszary: testy izolowane mikroserwisu autoryzacji oraz testy integracyjne całego systemu.
+
+\subsubsection{Izolacja środowiska testowego}
+Aby zapobiec nadpisywaniu lub modyfikacji realnych danych podczas wykonywania testów, zaimplementowano mechanizm izolacji bazy danych. Tworzone są zagnieżdżone transakcje, które po zakończeniu testu są wycofywane. Gwarantuje to, że każdy test uruchamia się na czystym stanie i nie wpływa na inne scenariusze.
+
+\subsubsection{Testowanie mikroserwisu autentykacji}
+W ramach osobnego zbioru testów (\texttt{test\_auth.py}) sprawdzana jest logika uwierzytelniania. Zweryfikowano w nich następujące przypadki:
+\begin{itemize}
+    \item \textbf{Poprawność rejestracji i logowania:} Sprawdzenie, czy nowo zarejestrowany kursant może się poprawnie zalogować i czy otrzymuje ważny token JWT.
+    \item \textbf{Ochrona ról (RBAC):} Próba zalogowania się z użyciem poprawnego hasła, ale zadeklarowaniem błędnej roli (np. kursant próbujący zalogować się jako administrator). Test weryfikuje, czy system odrzuci takie żądanie z kodem 401 Unauthorized.
+    \item \textbf{Zabezpieczenie kont uprzywilejowanych:} Weryfikacja, czy utworzenie nowego profilu o randze \texttt{admin} jest niemożliwe z poziomu niezalogowanego użytkownika, a udaje się jedynie wtedy, gdy żądanie posiada w nagłówku token obecnego administratora.
+\end{itemize}
+
+\subsubsection{Testy integracyjne przepływu pracy}
+W pliku \texttt{test\_core\_integration.py} zaimplementowano testy sprawdzające poprawność komunikacji pomiędzy dwoma mikroserwisami (Głównym API oraz serwisem autoryzacji). Zrealizowane scenariusze weryfikują:
+\begin{itemize}
+    \item Pełny przepływ (ang. \textit{workflow}): od wstępnej rejestracji, poprzez logowanie w serwisie Auth i pobranie tokenu, po uzupełnienie profilu instruktora w głównym serwisie.
+    \item Poprawność tworzenia powiązań w bazie danych, np. weryfikacja czy system pozwala instruktorowi zaplanować lekcję dla konkretnego kursanta na określoną godzinę i czy zwraca status 200 OK.
+    \item \textbf{Ochronę przed eskalacją uprawnień:} Sprawdzenie podatności na modyfikację danych w innych modułach.
+\end{itemize}
+
+W listingu \ref{lst:test-role-mismatch} przedstawiono fragment testu integracyjnego, który sprawdza skuteczność zabezpieczeń autoryzacyjnych. Test upewnia się, że użytkownik posiadający jedynie token kursanta nie ma prawa dostępu do endpointu umożliwiającego edycję profilu instruktora, uodparniając system na ataki manipulacji rolami.
+
+\begin{lstlisting}[language=Python, caption={Test zabezpieczeń przed eskalacją uprawnień na poziomie integracji}, label={lst:test-role-mismatch}]
+def test_10_role_mismatch_protection():
+    # Uzycie tokenu kursanta
+    headers = {"Authorization": f"Bearer {state['student_token']}"}
+    profile_payload = {
+        "first_name": "Malicious",
+        "last_name": "Actor",
+        "phone": "+48000000000",
+        "license_number": "BAD-PROMPT",
+        "bio": "Trying to bypass role restrictions."
+    }
+    # Proba wyslania zadan do modulu instruktora
+    response = httpx.post(f"{CORE_URL}/instructor/register_full", json=profile_payload, headers=headers)
+    
+    # System powinien odrzucic to zadanie ze wzgledu na brak uprawnien
+    assert response.status_code == 403
+\end{lstlisting}
+
+\clearpage
+
+\section{Wdrożenie projektu}
+W tym rozdziale opisano proces wdrożenia aplikacji. Do poprawnego uruchomienia całego środowiska deweloperskiego wymagane jest posiadanie zainstalowanych narzędzi: Docker, Python w wersji 3.12 oraz Node.js z menedżerem pakietów npm.
+
+\subsection{Środowisko bazodanowe (PostgreSQL i pgAdmin)}
+W celu zapewnienia spójnego środowiska bazy danych dla wszystkich programistów, wykorzystano konteneryzację za pomocą narzędzia Docker.  Plik \texttt{docker-compose.yml} zawiera konfigurację kontenerów oraz uruchamia instancję bazy PostgreSQL oraz interfejs do jej zarządzania -- pgAdmin.
+
+Aby uruchomić kontenery w tle, należy w głównym katalogu projektu wywołać polecenie:
+\begin{lstlisting}[language=bash]
+docker-compose up --build -d
+\end{lstlisting}
+
+Podczas pierwszego uruchomienia bazy, skrypt \texttt{init.sql} zamontowany w kontenerze zostanie wykonany automatycznie, tworząc wymagane schematy (m.in. \texttt{auth}, \texttt{student}, \texttt{instructor}, \texttt{calendar}) oraz tabele. 
+
+Po uruchomieniu środowiska, interfejs pgAdmin dostępny jest w przeglądarce pod adresem \texttt{http://localhost:5050} (logowanie: \texttt{admin@osk.pl} / \texttt{admin}). Ponadto przygotowano skrypt \texttt{data.sql}, który pozwala na zasilenie bazy testowymi danymi. Można go zaimportować i wykonać bezpośrednio z poziomu interfejsu pgAdmin.
+
+\subsection{Serwer backend (FastAPI)}
+Część serwerowa przedstawionej aplikacji została napisana w języku Python przy użyciu frameworku FastAPI. W celu jej uruchomienia zaleca się utworzenie wirtualnego środowiska przed zainstalowaniem wszelkich zależności. W celu ułatwienia procesu konfiguracji i uruchomienia aplikacji, utworzono skrypty \texttt{run.ps1} (dla systemów Microsoft Windows) oraz \texttt{run.sh} (dla sytemów Linux). Backend aplikacji został podzielony na dwa osobne serwisy. Aby je uruchomić należy przejść do katalogu projektu, uruchomić terminal i wpisać odpowiednią komendę wywołującą skrypt uruchamiający. W listingu \ref{lst:run-back-app} przedstawiono uruchomienie głównego serwisu, a w listingu \ref{lst:run-back-auth} -- uruchomienie mikroserwisu autoryzacji.
+\begin{lstlisting}[language=bash, caption={Inicjalizacja i uruchomienie serwera backendowego -- serwis główny}, label={lst:run-back-app}]
+## W głównym katalogu projektu
+# System Windows
+cd backend/app
+./run.ps1
+
+# System Linux
+cd backend/app
+./run.sh
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash, caption={Inicjalizacja i uruchomienie serwera backendowego -- mikroserwis autoryzacji}, label={lst:run-back-auth}]
+## W głównym katalogu projektu
+# System Windows
+cd backend/auth_service
+./run.ps1
+
+# System Linux
+cd backend/auth_service
+./run.sh
+\end{lstlisting}
+
+\subsection{Aplikacja Frontend (React)}
+Warstwa prezentacji bazuje na bibliotece React. Aby przygotować aplikację kliencką do działania, należy przejść do katalogu projektu i za pomocą terminala zainstalować niezbędne zależności przy użyciu menedżera pakietów Node (listing \ref{lst:run-front}.).
+
+\begin{lstlisting}[language=bash, caption={Instalacja zależności i uruchomienie aplikacji React}, label={lst:run-front}]
+# Przejście do katalogu frontend
+cd frontend
+
+# Pobranie i instalacja paczek
+npm install
+
+# Uruchomienie serwera frontendu
+npm run dev 
+\end{lstlisting}
+
+Po poprawnym uruchomieniu skryptu, aplikacja połączy się z lokalnym środowiskiem Core API i będzie dostępna z poziomu przeglądarki internetowej pod adresem wskazanym w konsoli (\texttt{http://localhost:3000}).
+
+\subsection{Testy aplikacji (pytest)}
+Część testowa przedstawionej aplikacji została przygotowana w języku Python przy użyciu frameworku \texttt{pytest}. W celu weryfikacji poprawności działania kodu zaleca się uruchamianie skryptów testowych wewnątrz wcześniej stworzonego wirtualnego środowiska, po uprzednim zainstalowaniu pakietów testowych. W celu automatyzacji oraz ułatwienia procesu uruchamiania testów jednostkowych i integracyjnych dla obu mikroserwisów, utworzono zbiorcze skrypty \texttt{tests.ps1} (dla systemów Microsoft Windows) oraz \texttt{tests.sh} (dla systemów Linux). Skrypty te automatycznie wyszukują i wykonują testy przygotowane zarówno dla głównego serwisu aplikacji, jak i mikroserwisu autoryzacji. Aby przeprowadzić procedurę testową, należy przejść do katalogu backendu, uruchomić terminal i wpisać odpowiednią komendę. W listingu \ref{lst:run-tests} przedstawiono sposób wywołania automatycznych testów.
+
+\begin{lstlisting}[language=bash, caption={Uruchomienie automatycznych testów jednostkowych i integracyjnych}, label={lst:run-tests}]
+## W głównym katalogu projektu
+# System Windows
+cd backend
+./tests.ps1
+
+# System Linux
+cd backend
+./tests.sh
+\end{lstlisting}
+
+\section{Podsumowanie i wnioski końcowe}
+Projekt pozwolił na praktyczne zrozumienie wyzwań związanych z bezpieczeństwem aplikacji webowych. W ramach projektu przeanalizowano zagrożenia związane z założeniami systemu oraz zastosowanymi narzędzami, bibliotekami i frameworkami. Uzasadniono wykorzystanie konkretnych wersji technologii, biorąc pod uwagę przeszłe podatności. Przedstawiono implementację aplikacji z uwzględnieniem ważnych mechanizmów wpływających na bezpieczeństwo i niezawodność systemu. Zidentyfikowano obszary wymagające dalszych prac w celu poprawienia bezpieczeństwa i niezawodności systemu. Wdrożone zautomatyzowane środowisko testowe pozwoliło na sprawdzenie szczelności i ochrony systemu przed atakami lub próbami eskalacji uprawnień. Mimo wdrożenia wielu zabezpieczeń, zidentyfikowano również obszary wymagające dalszych prac.
+Dodatkowo zaprezentowano scenariusz wdrożenia aplikacji, wzorując się na sprawdzonym mechanizmie wykorzystywanym w trakcie jej budowy. Utworzenie dedykowanych skryptów automatyzujących stanowi ułatwienie dla procesu ciągłej integracji i wdrażania (CI/CD). Ostatecznie, zastosowanie podziału na niezależne mikroserwisy oraz ścisła kontrola dostępu oparta na rolach (RBAC) wyraźnie zwiększyły elastyczność, skalowalność i ogólny poziom bezpieczeństwa całego systemu.
+
+\clearpage
+
+\addcontentsline{toc}{section}{Literatura}
+\begin{thebibliography}{99}
+
+\bibitem{OWASP}
+OWASP Top 10 2025. \url{https://owasp.org/Top10/2025/}. Dostęp 09.06.2026.
+\bibitem{react-vuln}
+Podatność frameworku React CVE-2025-55182 \url{https://nvd.nist.gov/vuln/detail/CVE-2025-55182}. Dostęp 09.06.2026.
+\bibitem{fastapi-vuln} 
+Podatność frameworku FastAPI CVE-2021-32677 \url{https://nvd.nist.gov/vuln/detail/CVE-2021-32677}. Dostęp 09.06.2026.
+\bibitem{postgres-vuln} 
+Podatność bazy danych PostgreSQL CVE-2026-6472 \url{https://nvd.nist.gov/vuln/detail/CVE-2026-6472}. Dostęp 09.06.2026.
+
+\end{thebibliography}
+
+\clearpage
+\end{document}
